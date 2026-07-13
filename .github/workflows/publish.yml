@@ -36,281 +36,281 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-  build-macos:
-    needs: get-version
-    timeout-minutes: 120
-    runs-on: lynx-darwin-14-medium
-    strategy:
-      matrix:
-        arch: [arm64]
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynxtron
-          ref: ${{ github.ref_name }}
-      - name: Build macOS Lynxtron
-        uses: ./lynxtron/.github/actions/macos-lynxtron-build
-        with:
-          build-arch: ${{ matrix.arch }}
-      - name: Package macOS binary
-        run: |
-          set -x
-          cd ${{ github.workspace }}/lynxtron
-          VERSION=${{ needs.get-version.outputs.version }}
-          mkdir -p publish
-          cd out/Release
-          # Find the main app bundle and package it
-          if [ -d "Lynxtron.app" ]; then
-            APP_NAME="Lynxtron.app"
-          elif [ -d "lynxtron.app" ]; then
-            APP_NAME="lynxtron.app"
-          else
-            echo "No app bundle found in out/Release"
-            ls -la
-            exit 1
-          fi
-          # Clean up .DS_Store, empty directories, and broken symlinks in app bundle
-          find "$APP_NAME" -name ".DS_Store" -type f -delete
-          find "$APP_NAME" -type d -empty -delete
-          find "$APP_NAME" -type l ! -exec test -e {} \; -delete
-          # Create a temporary directory with clean layout for the zip
-          mkdir -p dist
-          cp -R "$APP_NAME" dist/
-          cd dist
-          zip -ry "$OLDPWD/../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}.zip" "$APP_NAME"
-          ls -lh "$OLDPWD/../../publish/"
+  # build-macos:
+  #   needs: get-version
+  #   timeout-minutes: 120
+  #   runs-on: lynx-darwin-14-medium
+  #   strategy:
+  #     matrix:
+  #       arch: [arm64]
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynxtron
+  #         ref: ${{ github.ref_name }}
+  #     - name: Build macOS Lynxtron
+  #       uses: ./lynxtron/.github/actions/macos-lynxtron-build
+  #       with:
+  #         build-arch: ${{ matrix.arch }}
+  #     - name: Package macOS binary
+  #       run: |
+  #         set -x
+  #         cd ${{ github.workspace }}/lynxtron
+  #         VERSION=${{ needs.get-version.outputs.version }}
+  #         mkdir -p publish
+  #         cd out/Release
+  #         # Find the main app bundle and package it
+  #         if [ -d "Lynxtron.app" ]; then
+  #           APP_NAME="Lynxtron.app"
+  #         elif [ -d "lynxtron.app" ]; then
+  #           APP_NAME="lynxtron.app"
+  #         else
+  #           echo "No app bundle found in out/Release"
+  #           ls -la
+  #           exit 1
+  #         fi
+  #         # Clean up .DS_Store, empty directories, and broken symlinks in app bundle
+  #         find "$APP_NAME" -name ".DS_Store" -type f -delete
+  #         find "$APP_NAME" -type d -empty -delete
+  #         find "$APP_NAME" -type l ! -exec test -e {} \; -delete
+  #         # Create a temporary directory with clean layout for the zip
+  #         mkdir -p dist
+  #         cp -R "$APP_NAME" dist/
+  #         cd dist
+  #         zip -ry "$OLDPWD/../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}.zip" "$APP_NAME"
+  #         ls -lh "$OLDPWD/../../publish/"
 
-          # Package symbols (dSYM files only)
-          cd "$OLDPWD"
-          SYMBOLS_DIR="v${VERSION}-darwin-${{ matrix.arch }}-symbols"
-          mkdir -p "$SYMBOLS_DIR"
-          find . -path "./v${VERSION}-*" -prune -o -name "*.dSYM" -exec cp -r {} "$SYMBOLS_DIR/" \;
-          zip -r -y "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-symbols.zip" "$SYMBOLS_DIR"
-          ls -lh "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-symbols.zip"
+  #         # Package symbols (dSYM files only)
+  #         cd "$OLDPWD"
+  #         SYMBOLS_DIR="v${VERSION}-darwin-${{ matrix.arch }}-symbols"
+  #         mkdir -p "$SYMBOLS_DIR"
+  #         find . -path "./v${VERSION}-*" -prune -o -name "*.dSYM" -exec cp -r {} "$SYMBOLS_DIR/" \;
+  #         zip -r -y "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-symbols.zip" "$SYMBOLS_DIR"
+  #         ls -lh "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-symbols.zip"
 
-          # Build and package node headers
-          rm -rf node_headers
-          cd ${{ github.workspace }}/lynxtron
-          python3 lynxtron_tools/copy_node_headers.py
-          cd out/Release
-          zip -r "../../publish/lynxtron-v${VERSION}-node-headers.zip" node_headers
-          ls -lh "../../publish/lynxtron-v${VERSION}-node-headers.zip"
-      - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: lynxtron-darwin-${{ matrix.arch }}
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}.zip
-      - name: Upload macOS symbols
-        uses: actions/upload-artifact@v4
-        with:
-          name: lynxtron-darwin-${{ matrix.arch }}-symbols
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}-symbols.zip
-      - name: Upload node headers
-        uses: actions/upload-artifact@v4
-        with:
-          name: lynxtron-node-headers
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-node-headers.zip
+  #         # Build and package node headers
+  #         rm -rf node_headers
+  #         cd ${{ github.workspace }}/lynxtron
+  #         python3 lynxtron_tools/copy_node_headers.py
+  #         cd out/Release
+  #         zip -r "../../publish/lynxtron-v${VERSION}-node-headers.zip" node_headers
+  #         ls -lh "../../publish/lynxtron-v${VERSION}-node-headers.zip"
+  #     - name: Upload macOS artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: lynxtron-darwin-${{ matrix.arch }}
+  #         path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}.zip
+  #     - name: Upload macOS symbols
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: lynxtron-darwin-${{ matrix.arch }}-symbols
+  #         path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}-symbols.zip
+  #     - name: Upload node headers
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: lynxtron-node-headers
+  #         path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-node-headers.zip
 
-  build-windows:
-    needs: get-version
-    timeout-minutes: 120
-    runs-on: lynx-windows-2022-large
-    strategy:
-      matrix:
-        arch: [x64]
-    steps:
-      - name: Configure Git
-        shell: PowerShell
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-          git config --global http.sslBackend "schannel"
-        working-directory: ./
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynxtron
-          ref: ${{ github.ref_name }}
-      - name: Build Windows Lynxtron
-        uses: ./lynxtron/.github/actions/windows-lynxtron-build
-        with:
-          build-arch: ${{ matrix.arch }}
-      - name: Package Windows binary
-        shell: PowerShell
-        run: |
-          $VERSION = "${{ needs.get-version.outputs.version }}"
-          $workspace = "${{ github.workspace }}\lynxtron"
-          $outDir = "$workspace\out"
-          $releaseDir = "$outDir\Release"
-          New-Item -ItemType Directory -Force -Path "$workspace\publish" | Out-Null
+  # build-windows:
+  #   needs: get-version
+  #   timeout-minutes: 120
+  #   runs-on: lynx-windows-2022-large
+  #   strategy:
+  #     matrix:
+  #       arch: [x64]
+  #   steps:
+  #     - name: Configure Git
+  #       shell: PowerShell
+  #       run: |
+  #         git config --global core.autocrlf false
+  #         git config --global core.eol lf
+  #         git config --global http.sslBackend "schannel"
+  #       working-directory: ./
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynxtron
+  #         ref: ${{ github.ref_name }}
+  #     - name: Build Windows Lynxtron
+  #       uses: ./lynxtron/.github/actions/windows-lynxtron-build
+  #       with:
+  #         build-arch: ${{ matrix.arch }}
+  #     - name: Package Windows binary
+  #       shell: PowerShell
+  #       run: |
+  #         $VERSION = "${{ needs.get-version.outputs.version }}"
+  #         $workspace = "${{ github.workspace }}\lynxtron"
+  #         $outDir = "$workspace\out"
+  #         $releaseDir = "$outDir\Release"
+  #         New-Item -ItemType Directory -Force -Path "$workspace\publish" | Out-Null
 
-          # Create lynxtron_archive directory for packaging
-          $archiveDir = "$outDir\lynxtron_archive"
-          if (Test-Path $archiveDir) { Remove-Item -Recurse -Force $archiveDir }
-          New-Item -ItemType Directory -Force -Path $archiveDir | Out-Null
+  #         # Create lynxtron_archive directory for packaging
+  #         $archiveDir = "$outDir\lynxtron_archive"
+  #         if (Test-Path $archiveDir) { Remove-Item -Recurse -Force $archiveDir }
+  #         New-Item -ItemType Directory -Force -Path $archiveDir | Out-Null
 
-          # Copy all required files to archive directory
-          Copy-Item -Path "$releaseDir\*.exe" -Destination $archiveDir -Force
-          Copy-Item -Path "$releaseDir\*.dll" -Destination $archiveDir -Force
-          Copy-Item -Path "$releaseDir\*.lib" -Destination $archiveDir -Force
-          if (Test-Path "$releaseDir\lynx_core.js") { Copy-Item -Path "$releaseDir\lynx_core.js" -Destination $archiveDir -Force }
-          if (Test-Path "$releaseDir\lynx_core_dev.js") { Copy-Item -Path "$releaseDir\lynx_core_dev.js" -Destination $archiveDir -Force }
-          if (Test-Path "$releaseDir\devtool_resources") { Copy-Item -Recurse -Path "$releaseDir\devtool_resources" -Destination "$archiveDir\devtool_resources" -Force }
-          if (Test-Path "$releaseDir\resources") { Copy-Item -Recurse -Path "$releaseDir\resources" -Destination "$archiveDir\resources" -Force }
-          if (Test-Path "$releaseDir\icudtl.dat") { Copy-Item -Path "$releaseDir\icudtl.dat" -Destination $archiveDir -Force }
-          if (Test-Path "$releaseDir\snapshot_blob.bin") { Copy-Item -Path "$releaseDir\snapshot_blob.bin" -Destination $archiveDir -Force }
+  #         # Copy all required files to archive directory
+  #         Copy-Item -Path "$releaseDir\*.exe" -Destination $archiveDir -Force
+  #         Copy-Item -Path "$releaseDir\*.dll" -Destination $archiveDir -Force
+  #         Copy-Item -Path "$releaseDir\*.lib" -Destination $archiveDir -Force
+  #         if (Test-Path "$releaseDir\lynx_core.js") { Copy-Item -Path "$releaseDir\lynx_core.js" -Destination $archiveDir -Force }
+  #         if (Test-Path "$releaseDir\lynx_core_dev.js") { Copy-Item -Path "$releaseDir\lynx_core_dev.js" -Destination $archiveDir -Force }
+  #         if (Test-Path "$releaseDir\devtool_resources") { Copy-Item -Recurse -Path "$releaseDir\devtool_resources" -Destination "$archiveDir\devtool_resources" -Force }
+  #         if (Test-Path "$releaseDir\resources") { Copy-Item -Recurse -Path "$releaseDir\resources" -Destination "$archiveDir\resources" -Force }
+  #         if (Test-Path "$releaseDir\icudtl.dat") { Copy-Item -Path "$releaseDir\icudtl.dat" -Destination $archiveDir -Force }
+  #         if (Test-Path "$releaseDir\snapshot_blob.bin") { Copy-Item -Path "$releaseDir\snapshot_blob.bin" -Destination $archiveDir -Force }
 
-          # Remove unnecessary executable files
-          $unwantedExes = @("mksnapshot.exe", "protoc.exe", "torque.exe", "cppgen_plugin.exe", "protozero_plugin.exe", "nasm.exe", "gen-regexp-special-case.exe", "node_js2c.exe", "bytecode_builtins_list_generator.exe")
-          foreach ($exe in $unwantedExes) {
-            $path = Join-Path $archiveDir $exe
-            if (Test-Path $path) { Remove-Item -Force $path }
-          }
+  #         # Remove unnecessary executable files
+  #         $unwantedExes = @("mksnapshot.exe", "protoc.exe", "torque.exe", "cppgen_plugin.exe", "protozero_plugin.exe", "nasm.exe", "gen-regexp-special-case.exe", "node_js2c.exe", "bytecode_builtins_list_generator.exe")
+  #         foreach ($exe in $unwantedExes) {
+  #           $path = Join-Path $archiveDir $exe
+  #           if (Test-Path $path) { Remove-Item -Force $path }
+  #         }
 
-          # Create version file
-          Set-Content -Path "$archiveDir\version" -Value $VERSION
+  #         # Create version file
+  #         Set-Content -Path "$archiveDir\version" -Value $VERSION
 
-          # Clean up empty directories
-          Get-ChildItem -Path $archiveDir -Recurse -Directory | Sort-Object FullName -Descending | ForEach-Object {
-            if ((Get-ChildItem $_.FullName -Force).Count -eq 0) { Remove-Item $_.FullName -Force }
-          }
+  #         # Clean up empty directories
+  #         Get-ChildItem -Path $archiveDir -Recurse -Directory | Sort-Object FullName -Descending | ForEach-Object {
+  #           if ((Get-ChildItem $_.FullName -Force).Count -eq 0) { Remove-Item $_.FullName -Force }
+  #         }
 
-          # Compress using compress_helper.py
-          Set-Location $outDir
-          python "$workspace\src\tools\compress_helper.py" lynxtron_archive
-          Rename-Item -Path "$outDir\lynxtron_archive.zip" -NewName "lynxtron-v${VERSION}-win32-${{ matrix.arch }}.zip"
-          Move-Item -Path "$outDir\lynxtron-v${VERSION}-win32-${{ matrix.arch }}.zip" -Destination "$workspace\publish\" -Force
+  #         # Compress using compress_helper.py
+  #         Set-Location $outDir
+  #         python "$workspace\src\tools\compress_helper.py" lynxtron_archive
+  #         Rename-Item -Path "$outDir\lynxtron_archive.zip" -NewName "lynxtron-v${VERSION}-win32-${{ matrix.arch }}.zip"
+  #         Move-Item -Path "$outDir\lynxtron-v${VERSION}-win32-${{ matrix.arch }}.zip" -Destination "$workspace\publish\" -Force
 
-          $zipPath = "$workspace\publish\lynxtron-v${VERSION}-win32-${{ matrix.arch }}.zip"
-          Write-Host "Created $zipPath"
-          Get-Item $zipPath | Select-Object Name, Length
+  #         $zipPath = "$workspace\publish\lynxtron-v${VERSION}-win32-${{ matrix.arch }}.zip"
+  #         Write-Host "Created $zipPath"
+  #         Get-Item $zipPath | Select-Object Name, Length
 
-          # Package symbols (pdb files only)
-          $symbolsDir = "$outDir\lynxtron-symbols"
-          if (Test-Path $symbolsDir) { Remove-Item -Recurse -Force $symbolsDir }
-          New-Item -ItemType Directory -Force -Path $symbolsDir | Out-Null
-          Get-ChildItem -Path $releaseDir -Filter "*.pdb" -Recurse | Copy-Item -Destination $symbolsDir -Force
-          Set-Location $outDir
-          python "$workspace\src\tools\compress_helper.py" lynxtron-symbols
-          Rename-Item -Path "$outDir\lynxtron-symbols.zip" -NewName "lynxtron-v${VERSION}-win32-${{ matrix.arch }}-symbols.zip"
-          Move-Item -Path "$outDir\lynxtron-v${VERSION}-win32-${{ matrix.arch }}-symbols.zip" -Destination "$workspace\publish\" -Force
-          Write-Host "Created symbols package"
-          Get-Item "$workspace\publish\lynxtron-v${VERSION}-win32-${{ matrix.arch }}-symbols.zip" | Select-Object Name, Length
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: lynxtron-win32-${{ matrix.arch }}
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}.zip
-      - name: Upload Windows symbols
-        uses: actions/upload-artifact@v4
-        with:
-          name: lynxtron-win32-${{ matrix.arch }}-symbols
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}-symbols.zip
+  #         # Package symbols (pdb files only)
+  #         $symbolsDir = "$outDir\lynxtron-symbols"
+  #         if (Test-Path $symbolsDir) { Remove-Item -Recurse -Force $symbolsDir }
+  #         New-Item -ItemType Directory -Force -Path $symbolsDir | Out-Null
+  #         Get-ChildItem -Path $releaseDir -Filter "*.pdb" -Recurse | Copy-Item -Destination $symbolsDir -Force
+  #         Set-Location $outDir
+  #         python "$workspace\src\tools\compress_helper.py" lynxtron-symbols
+  #         Rename-Item -Path "$outDir\lynxtron-symbols.zip" -NewName "lynxtron-v${VERSION}-win32-${{ matrix.arch }}-symbols.zip"
+  #         Move-Item -Path "$outDir\lynxtron-v${VERSION}-win32-${{ matrix.arch }}-symbols.zip" -Destination "$workspace\publish\" -Force
+  #         Write-Host "Created symbols package"
+  #         Get-Item "$workspace\publish\lynxtron-v${VERSION}-win32-${{ matrix.arch }}-symbols.zip" | Select-Object Name, Length
+  #     - name: Upload Windows artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: lynxtron-win32-${{ matrix.arch }}
+  #         path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}.zip
+  #     - name: Upload Windows symbols
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: lynxtron-win32-${{ matrix.arch }}-symbols
+  #         path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}-symbols.zip
 
-  build-cef-webview-macos:
-    needs: get-version
-    timeout-minutes: 120
-    runs-on: lynx-darwin-14-medium
-    strategy:
-      matrix:
-        arch: [arm64]
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynxtron
-          ref: ${{ github.ref_name }}
-      - name: Prepare environment
-        shell: bash
-        run: |
-          set -x
-          cd ${{ github.workspace }}/lynxtron
-          git config --global http.version HTTP/1.1
-          git config --global user.name "Lynxtron Scripts"
-          git config --global user.email "scripts@lynxtron.com"
-          source lynxtron_tools/envsetup.sh
-          python3 lynxtron_tools/prepare_build_env.py
-          cd ${{ github.workspace }}/lynxtron/lynx/third_party/weak-node-api/
-          python3 setup_deps.py
-          # Sync CEF binary distribution required by cef-webview CMakeLists.
-          cd ${{ github.workspace }}/lynxtron/src
-          "${{ github.workspace }}/lynxtron/lynxtron_tools/hab" sync . -f --no-history --target extension --target-only
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.14.1
-      - name: Install CMake
-        shell: bash
-        run: |
-          brew install cmake
-          cmake --version
-      - name: Build CEF webview
-        shell: bash
-        run: |
-          set -e
-          set -x
-          VERSION=${{ needs.get-version.outputs.version }}
-          PLATFORM="darwin"
-          ARCH="${{ matrix.arch }}"
-          PACKAGE_DIR=${{ github.workspace }}/lynxtron/src/packages/cef-webview
-          cd "$PACKAGE_DIR"
-          # Install only the build deps. The package's @lynx-js/lynxtron
-          # devDependency is not required for macOS native builds and is
-          # skipped to avoid resolving an unreleased version on the registry.
-          npm install --no-save --ignore-scripts \
-            cmake-js@^7.4.0 \
-            node-addon-api@^7.0.0
-          if [ "$ARCH" = "arm64" ]; then
-            export CMAKE_OSX_ARCHITECTURES=arm64
-            npx cmake-js build
-          else
-            export CMAKE_OSX_ARCHITECTURES=x86_64
-            arch -x86_64 npx cmake-js build
-          fi
-          ROOT_NAME="cef_webview-v${VERSION}-${PLATFORM}-${ARCH}"
-          TMP_DIR="$PACKAGE_DIR/_pack_tmp_${ARCH}"
-          rm -rf "$TMP_DIR"
-          mkdir -p "$TMP_DIR/$ROOT_NAME"
-          cp ./build/Release/cef_extension.node "$TMP_DIR/$ROOT_NAME/"
-          mkdir -p "$TMP_DIR/$ROOT_NAME/frameworks"
-          cp -R ./build/frameworks/Contents/Frameworks/* "$TMP_DIR/$ROOT_NAME/frameworks/"
-          mkdir -p ${{ github.workspace }}/lynxtron/publish
-          cd "$TMP_DIR"
-          zip -ry "${{ github.workspace }}/lynxtron/publish/${ROOT_NAME}.zip" "$ROOT_NAME"
-          ls -lh "${{ github.workspace }}/lynxtron/publish/${ROOT_NAME}.zip"
-      - name: Upload CEF webview artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cef-webview-darwin-${{ matrix.arch }}
-          path: lynxtron/publish/cef_webview-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}.zip
+  # build-cef-webview-macos:
+  #   needs: get-version
+  #   timeout-minutes: 120
+  #   runs-on: lynx-darwin-14-medium
+  #   strategy:
+  #     matrix:
+  #       arch: [arm64]
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynxtron
+  #         ref: ${{ github.ref_name }}
+  #     - name: Prepare environment
+  #       shell: bash
+  #       run: |
+  #         set -x
+  #         cd ${{ github.workspace }}/lynxtron
+  #         git config --global http.version HTTP/1.1
+  #         git config --global user.name "Lynxtron Scripts"
+  #         git config --global user.email "scripts@lynxtron.com"
+  #         source lynxtron_tools/envsetup.sh
+  #         python3 lynxtron_tools/prepare_build_env.py
+  #         cd ${{ github.workspace }}/lynxtron/lynx/third_party/weak-node-api/
+  #         python3 setup_deps.py
+  #         # Sync CEF binary distribution required by cef-webview CMakeLists.
+  #         cd ${{ github.workspace }}/lynxtron/src
+  #         "${{ github.workspace }}/lynxtron/lynxtron_tools/hab" sync . -f --no-history --target extension --target-only
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 24.14.1
+  #     - name: Install CMake
+  #       shell: bash
+  #       run: |
+  #         brew install cmake
+  #         cmake --version
+  #     - name: Build CEF webview
+  #       shell: bash
+  #       run: |
+  #         set -e
+  #         set -x
+  #         VERSION=${{ needs.get-version.outputs.version }}
+  #         PLATFORM="darwin"
+  #         ARCH="${{ matrix.arch }}"
+  #         PACKAGE_DIR=${{ github.workspace }}/lynxtron/src/packages/cef-webview
+  #         cd "$PACKAGE_DIR"
+  #         # Install only the build deps. The package's @lynx-js/lynxtron
+  #         # devDependency is not required for macOS native builds and is
+  #         # skipped to avoid resolving an unreleased version on the registry.
+  #         npm install --no-save --ignore-scripts \
+  #           cmake-js@^7.4.0 \
+  #           node-addon-api@^7.0.0
+  #         if [ "$ARCH" = "arm64" ]; then
+  #           export CMAKE_OSX_ARCHITECTURES=arm64
+  #           npx cmake-js build
+  #         else
+  #           export CMAKE_OSX_ARCHITECTURES=x86_64
+  #           arch -x86_64 npx cmake-js build
+  #         fi
+  #         ROOT_NAME="cef_webview-v${VERSION}-${PLATFORM}-${ARCH}"
+  #         TMP_DIR="$PACKAGE_DIR/_pack_tmp_${ARCH}"
+  #         rm -rf "$TMP_DIR"
+  #         mkdir -p "$TMP_DIR/$ROOT_NAME"
+  #         cp ./build/Release/cef_extension.node "$TMP_DIR/$ROOT_NAME/"
+  #         mkdir -p "$TMP_DIR/$ROOT_NAME/frameworks"
+  #         cp -R ./build/frameworks/Contents/Frameworks/* "$TMP_DIR/$ROOT_NAME/frameworks/"
+  #         mkdir -p ${{ github.workspace }}/lynxtron/publish
+  #         cd "$TMP_DIR"
+  #         zip -ry "${{ github.workspace }}/lynxtron/publish/${ROOT_NAME}.zip" "$ROOT_NAME"
+  #         ls -lh "${{ github.workspace }}/lynxtron/publish/${ROOT_NAME}.zip"
+  #     - name: Upload CEF webview artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: cef-webview-darwin-${{ matrix.arch }}
+  #         path: lynxtron/publish/cef_webview-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}.zip
 
-  create-release:
-    needs: [get-version, build-cef-webview-macos, build-macos, build-windows]
-    runs-on: lynx-ubuntu-22.04-medium
-    permissions:
-      contents: write
-    defaults:
-      run:
-        working-directory: ./
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-      - name: List artifacts
-        run: ls -lhR artifacts/
-      - name: Create GitHub Release and upload assets
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ needs.get-version.outputs.tag }}
-          name: Release ${{ needs.get-version.outputs.tag }}
-          generateReleaseNotes: true
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          artifacts: 'artifacts/**/*.zip'
+  # create-release:
+  #   needs: [get-version, build-cef-webview-macos, build-macos, build-windows]
+  #   runs-on: lynx-ubuntu-22.04-medium
+  #   permissions:
+  #     contents: write
+  #   defaults:
+  #     run:
+  #       working-directory: ./
+  #   steps:
+  #     - name: Download all artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         path: artifacts
+  #     - name: List artifacts
+  #       run: ls -lhR artifacts/
+  #     - name: Create GitHub Release and upload assets
+  #       uses: ncipollo/release-action@v1
+  #       with:
+  #         tag: ${{ needs.get-version.outputs.tag }}
+  #         name: Release ${{ needs.get-version.outputs.tag }}
+  #         generateReleaseNotes: true
+  #         allowUpdates: true
+  #         artifactErrorsFailBuild: true
+  #         artifacts: 'artifacts/**/*.zip'
 
   publish-npm:
-    needs: [get-version, create-release]
+    needs: [get-version]
     runs-on: macos-latest
     permissions:
       contents: read
@@ -374,6 +374,4 @@ jobs:
           cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynxtron-rebuild
           npm publish --access public --provenance --tag "$NPM_TAG"
           cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynx-library-headers
-          npm publish --access public --provenance --tag "$NPM_TAG"
-          cd $GITHUB_WORKSPACE/lynxtron/src/packages/cef-webview
           npm publish --access public --provenance --tag "$NPM_TAG"
