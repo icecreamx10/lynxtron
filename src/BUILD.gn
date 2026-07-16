@@ -417,6 +417,8 @@ source_set("lynxtron_lib") {
 
   deps += lynxtron_resource_fetcher_deps
 
+  deps += lynxtron_http_service_deps
+
   include_dirs = [
     ".",
     "$root_gen_dir/lynxtron",
