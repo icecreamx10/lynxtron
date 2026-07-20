@@ -1,1 +1,2 @@
 0001-Fix-skity-build-issues.patch
+0002-Fix-skity_build_gni.py-cmake-build-failure-on-Window.patch

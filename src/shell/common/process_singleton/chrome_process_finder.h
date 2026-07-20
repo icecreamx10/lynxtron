@@ -11,6 +11,9 @@
 
 #include <windows.h>
 
+#include <vector>
+
+#include "base/containers/span.h"
 #include "base/time/time.h"
 
 namespace base {
@@ -29,7 +32,9 @@ HWND FindRunningChromeWindow(const base::FilePath& user_data_dir);
 // Attempts to send the current command line to an already running instance of
 // Chrome via a WM_COPYDATA message.
 // Returns true if a running Chrome is found and successfully notified.
-NotifyChromeResult AttemptToNotifyRunningChrome(HWND remote_window);
+NotifyChromeResult AttemptToNotifyRunningChrome(
+    HWND remote_window,
+    base::span<const uint8_t> additional_data);
 
 // Changes the notification timeout to |new_timeout|, returns the old timeout.
 base::TimeDelta SetNotificationTimeoutForTesting(base::TimeDelta new_timeout);
