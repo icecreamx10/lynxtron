@@ -199,7 +199,7 @@ void NativeWindowWin::Hide() {
 }
 
 bool NativeWindowWin::IsVisible() {
-  return window_->IsVisible();
+  return window_->IsVisible() && !window_->IsMinimized();
 }
 
 bool NativeWindowWin::IsEnabled() {
@@ -240,6 +240,23 @@ void NativeWindowWin::SetEnabledInternal(bool enable) {
 }
 
 void NativeWindowWin::Unmaximize() {
+  if (IsMinimized()) {
+    return;
+  }
+
+  if (!frame() || !thick_frame_) {
+    if (!last_normal_placement_bounds_.IsEmpty()) {
+      SetBounds(ScreenToDIPRect(GetNativeWindowHandle(),
+                                last_normal_placement_bounds_),
+                false);
+    }
+    if (last_window_state_ == ui::SHOW_STATE_MAXIMIZED) {
+      last_window_state_ = ui::SHOW_STATE_NORMAL;
+      NotifyWindowUnmaximize();
+    }
+    return;
+  }
+
   if (transparent()) {
     SetBounds(restore_bounds_, false);
     NotifyWindowUnmaximize();
@@ -353,7 +370,7 @@ void NativeWindowWin::SetBounds(const gfx::Rect& bounds, bool animate) {
     SetMinimumSize(bounds.size());
   }
 
-  window_->SetBounds(bounds, true);
+  window_->SetBounds(DIPToScreenRect(GetNativeWindowHandle(), bounds), true);
 }
 
 gfx::Rect NativeWindowWin::GetBounds() const {
@@ -364,6 +381,11 @@ gfx::Rect NativeWindowWin::GetBounds() const {
 
   gfx::Rect bounds = window_->GetWindowBoundsInScreen();
   return ScreenToDIPRect(GetNativeWindowHandle(), bounds);
+}
+
+gfx::Rect NativeWindowWin::GetContentBounds() const {
+  return ScreenToDIPRect(GetNativeWindowHandle(),
+                         window_->GetClientAreaBoundsInScreen());
 }
 
 float NativeWindowWin::GetDevicePixelRatio() const {
@@ -507,8 +529,7 @@ ui::ZOrderLevel NativeWindowWin::GetZOrderLevel() const {
 }
 
 void NativeWindowWin::Center() {
-  gfx::Size screen_size = DIPToScreenSize(GetSize());
-  window_->CenterWindow(screen_size);
+  window_->CenterWindow(window_->GetWindowBoundsInScreen().size());
 }
 
 void NativeWindowWin::SetTitle(const std::string& title) {
@@ -868,15 +889,7 @@ void NativeWindowWin::HandleWindowMinimizedOrRestored(bool restored) {
     if (last_window_state_ != ui::SHOW_STATE_MINIMIZED) {
       return;
     }
-    if (IsFullscreen()) {
-      last_window_state_ = ui::SHOW_STATE_FULLSCREEN;
-      NotifyWindowEnterFullScreen();
-      return;
-    }
-    if (IsMaximized()) {
-      return;
-    }
-    last_window_state_ = ui::SHOW_STATE_NORMAL;
+    last_window_state_ = restored_window_state_;
     NotifyWindowRestore();
     return;
   }
@@ -891,6 +904,7 @@ void NativeWindowWin::HandleWindowMinimizedOrRestored(bool restored) {
     last_normal_placement_bounds_ = gfx::Rect(wp.rcNormalPosition);
   }
 
+  restored_window_state_ = last_window_state_;
   last_window_state_ = ui::SHOW_STATE_MINIMIZED;
   NotifyWindowMinimize();
 }

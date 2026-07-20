@@ -156,12 +156,10 @@ app.whenReady().then(async () => {
   const cb = () => {
     // Ensure the callback is called after runner is defined
     process.nextTick(() => {
-      if (process.env.ELECTRON_FORCE_TEST_SUITE_EXIT === 'true') {
-        console.log(`${FAILURE_STATUS_KEY}: ${runner.failures}`);
-        process.kill(process.pid);
-      } else {
-        process.exit(runner.failures);
-      }
+      process.stdout.write(
+        `${FAILURE_STATUS_KEY}: ${runner.failures}\n`,
+        () => process.exit(runner.failures)
+      );
     });
   };
 

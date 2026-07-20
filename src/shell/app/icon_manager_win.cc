@@ -13,7 +13,6 @@
 
 #include "base/files/file_util.h"
 #include "base/win/scoped_gdi_object.h"
-#include "shell/ui/display/win/dpi.h"
 #include "shell/ui/gfx/icon_util.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/geometry/size.h"
@@ -25,6 +24,22 @@ gfx::Image LoadIconWithShGetFileInfo(const base::FilePath& path,
                                      IconManager::IconSize size) {
   base::FilePath normalized_path = path.NormalizePathSeparators();
   bool exists = base::PathExists(normalized_path);
+  const int pixel_size = IconManager::GetPixelSize(size);
+
+  if (exists && normalized_path.MatchesExtension(FILE_PATH_LITERAL(".ico"))) {
+    base::win::ScopedGDIObject<HICON> icon(static_cast<HICON>(
+        LoadImage(nullptr, normalized_path.value().c_str(), IMAGE_ICON,
+                  pixel_size, pixel_size, LR_LOADFROMFILE)));
+    if (icon.get()) {
+      SkBitmap skbitmap = IconUtil::CreateSkBitmapFromHICON(
+          icon.get(), gfx::Size(pixel_size, pixel_size));
+      if (!skbitmap.isNull()) {
+        gfx::ImageSkia image_skia =
+            gfx::ImageSkia::CreateFromBitmap(skbitmap, 1.0f);
+        return gfx::Image(image_skia);
+      }
+    }
+  }
 
   UINT flags = SHGFI_ICON;
   if (size == IconManager::IconSize::kSmall) {
@@ -46,13 +61,11 @@ gfx::Image LoadIconWithShGetFileInfo(const base::FilePath& path,
 
   base::win::ScopedGDIObject<HICON> icon(file_info.hIcon);
   SkBitmap skbitmap = IconUtil::CreateSkBitmapFromHICON(
-      icon.get(), gfx::Size(IconManager::GetPixelSize(size),
-                            IconManager::GetPixelSize(size)));
+      icon.get(), gfx::Size(pixel_size, pixel_size));
   if (skbitmap.isNull()) {
     return gfx::Image();
   }
-  gfx::ImageSkia image_skia =
-      gfx::ImageSkia::CreateFromBitmap(skbitmap, display::win::GetDPIScale());
+  gfx::ImageSkia image_skia = gfx::ImageSkia::CreateFromBitmap(skbitmap, 1.0f);
   return gfx::Image(image_skia);
 }
 

@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/base_paths.h"
 #include "base/command_line.h"
 #include "base/environment.h"
 #include "base/files/file_path.h"
@@ -356,6 +357,12 @@ int GetPathConstant(const std::string& name) {
     return base::FILE_EXE;
   } else if (name == "module") {
     return base::FILE_MODULE;
+  } else if (name == "assets") {
+#if BUILDFLAG(IS_MAC)
+    return -1;
+#else
+    return base::DIR_ASSETS;
+#endif
   } else if (name == "documents") {
     return DIR_USER_DOCUMENTS;
   } else if (name == "downloads") {
@@ -423,14 +430,12 @@ struct ProcessMemoryInfo {
 ProcessMemoryInfo GetMemoryInfo() {
   ProcessMemoryInfo result;
 
-  // PROCESS_MEMORY_COUNTERS_EX info = {};
-  // if (::GetProcessMemoryInfo(process.Handle(),
-  //                            reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&info),
-  //                            sizeof(info))) {
-  //   result.working_set_size = info.WorkingSetSize;
-  //   result.peak_working_set_size = info.PeakWorkingSetSize;
-  //   result.private_bytes = info.PrivateUsage;
-  // }
+  auto metrics = base::ProcessMetrics::CreateCurrentProcessMetrics();
+  if (auto info = metrics->GetMemoryInfo(); info.has_value()) {
+    result.working_set_size = info->resident_set_bytes;
+    result.peak_working_set_size = info->resident_set_bytes;
+    result.private_bytes = info->private_bytes;
+  }
 
   return result;
 }
@@ -955,7 +960,7 @@ v8::Local<v8::Promise> App::GetFileIcon(const base::FilePath& path,
 #endif
 
 gin_helper::Dictionary App::GetAppMetrics(v8::Isolate* isolate) {
-  gin_helper::Dictionary result;
+  auto result = gin_helper::Dictionary::CreateEmpty(isolate);
   int processor_count = base::SysInfo::NumberOfProcessors();
   auto pid_dict = gin_helper::Dictionary::CreateEmpty(isolate);
   auto cpu_dict = gin_helper::Dictionary::CreateEmpty(isolate);
@@ -966,7 +971,8 @@ gin_helper::Dictionary App::GetAppMetrics(v8::Isolate* isolate) {
     cpu_dict.Set("cumulativeCPUUsage", usage->InSecondsF());
     usagePercent = metric->GetPlatformIndependentCPUUsage(*usage);
   }
-  cpu_dict.Set("percentCPUUsage", usagePercent / processor_count);
+  cpu_dict.Set("percentCPUUsage",
+               processor_count > 0 ? usagePercent / processor_count : 0);
 #if !BUILDFLAG(IS_WIN)
   cpu_dict.Set("idleWakeupsPerSecond", metric->GetIdleWakeupsPerSecond());
 #else
@@ -976,7 +982,7 @@ gin_helper::Dictionary App::GetAppMetrics(v8::Isolate* isolate) {
   cpu_dict.Set("idleWakeupsPerSecond", 0);
 #endif
   pid_dict.Set("cpu", cpu_dict);
-  auto current_process = base::Process(base::GetCurrentProcessHandle());
+  auto current_process = base::Process::Current();
   pid_dict.Set("creationTime",
                current_process.CreationTime().InMillisecondsFSinceUnixEpoch());
   auto memory_info = GetMemoryInfo();

@@ -16,17 +16,10 @@ const exists = (targetPath) => {
 const findRepoRoot = () => {
   let current = packageRoot;
   while (true) {
-    const candidate = path.join(
-      current,
-      'out',
-      process.env.LYNXTRON_OUT_DIR || 'Debug',
-      'include',
-      'third_party',
-      'weak-node-api',
-      'headers',
-      'node_api.h'
-    );
-    if (exists(candidate)) {
+    if (
+      exists(path.join(current, 'src', 'package.json')) &&
+      exists(path.join(current, 'lynxtron_tools', 'envsetup.ps1'))
+    ) {
       return current;
     }
 
@@ -48,36 +41,71 @@ const hasCompleteNodeDir = (nodeDir) => {
   );
 };
 
+const getCandidateOutDirs = () => {
+  const candidates = [];
+  if (process.env.LYNXTRON_OUT_DIR) {
+    candidates.push(process.env.LYNXTRON_OUT_DIR);
+  }
+
+  const nodeDir = process.env.npm_config_nodedir;
+  if (nodeDir) {
+    const parts = path.normalize(nodeDir).split(path.sep);
+    const outIndex = parts.lastIndexOf('out');
+    if (outIndex >= 0 && parts[outIndex + 1]) {
+      candidates.push(parts[outIndex + 1]);
+    }
+  }
+
+  candidates.push('Release', 'Default', 'Debug', 'Testing');
+  return [...new Set(candidates)];
+};
+
 const prepareFallbackNodeDir = () => {
   const repoRoot = findRepoRoot();
   if (!repoRoot) {
     throw new Error('Unable to locate Lynxtron repo root for dialog-helper');
   }
 
-  const outDir = process.env.LYNXTRON_OUT_DIR || 'Debug';
-  const headersDir = path.join(
-    repoRoot,
-    'out',
-    outDir,
-    'include',
-    'third_party',
-    'weak-node-api',
-    'headers'
-  );
-  const configGypi = path.join(
-    repoRoot,
-    'out',
-    outDir,
-    'gen',
-    'third_party',
-    'node',
-    'config.gypi'
-  );
+  let outDir = null;
+  let headersDir = null;
+  let configGypi = null;
   const commonGypi = path.join(repoRoot, 'third_party', 'node', 'common.gypi');
 
-  if (!exists(headersDir) || !exists(configGypi) || !exists(commonGypi)) {
+  for (const candidateOutDir of getCandidateOutDirs()) {
+    const candidateHeadersDir = path.join(
+      repoRoot,
+      'out',
+      candidateOutDir,
+      'include',
+      'third_party',
+      'weak-node-api',
+      'headers'
+    );
+    const candidateConfigGypi = path.join(
+      repoRoot,
+      'out',
+      candidateOutDir,
+      'gen',
+      'third_party',
+      'node',
+      'config.gypi'
+    );
+
+    if (
+      exists(candidateHeadersDir) &&
+      exists(candidateConfigGypi) &&
+      exists(commonGypi)
+    ) {
+      outDir = candidateOutDir;
+      headersDir = candidateHeadersDir;
+      configGypi = candidateConfigGypi;
+      break;
+    }
+  }
+
+  if (!outDir || !headersDir || !configGypi) {
     throw new Error(
-      `Missing fallback node headers for dialog-helper under out/${outDir}`
+      `Missing fallback node headers for dialog-helper under out/{${getCandidateOutDirs().join(', ')}}`
     );
   }
 

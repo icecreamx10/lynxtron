@@ -13,6 +13,7 @@
 #include <shellapi.h>
 #include <stddef.h>
 
+#include "base/base64.h"
 #include "base/base_paths.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
@@ -147,13 +148,22 @@ bool ParseCommandLine(const COPYDATASTRUCT* cds,
                       "parts separated by NULLs";
     }
 
-    // Get the actual additional data.
-    const std::wstring additional_data =
-        msg.substr(fourth_null + 1, fifth_null - fourth_null);
-    const uint8_t* additional_data_bytes =
-        reinterpret_cast<const uint8_t*>(additional_data.c_str());
+    // Decode the actual additional data from base64 so binary payloads can be
+    // transported safely through the null-delimited wide string message.
+    const std::wstring encoded_additional_data =
+        msg.substr(fourth_null + 1, fifth_null - fourth_null - 1);
+    std::string decoded_additional_data;
+    if (!base::Base64Decode(base::WideToUTF8(encoded_additional_data),
+                            &decoded_additional_data)) {
+      LOG(WARNING) << "Invalid base64 additional data payload";
+      return false;
+    }
     *parsed_additional_data = std::vector<uint8_t>(
-        additional_data_bytes, additional_data_bytes + additional_data_length);
+        decoded_additional_data.begin(), decoded_additional_data.end());
+    if (parsed_additional_data->size() != additional_data_length) {
+      LOG(WARNING) << "Mismatched additional data payload length";
+      return false;
+    }
 
     return true;
   }
@@ -326,7 +336,7 @@ ProcessSingleton::NotifyResult ProcessSingleton::NotifyOtherProcess() {
     return PROCESS_NONE;
   }
 
-  switch (AttemptToNotifyRunningChrome(remote_window_)) {
+  switch (AttemptToNotifyRunningChrome(remote_window_, additional_data_)) {
     case NotifyChromeResult::NOTIFY_SUCCESS:
       return PROCESS_NOTIFIED;
     case NotifyChromeResult::NOTIFY_FAILED:

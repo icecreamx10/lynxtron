@@ -52,6 +52,7 @@ class NativeWindowWin : public NativeWindow,
   bool IsFullscreen() const override;
   void SetBounds(const gfx::Rect& bounds, bool animate) override;
   gfx::Rect GetBounds() const override;
+  gfx::Rect GetContentBounds() const override;
   float GetDevicePixelRatio() const override;
   gfx::Rect GetNormalBounds() const override;
   void SetResizable(bool resizable) override;
@@ -167,6 +168,7 @@ class NativeWindowWin : public NativeWindow,
   void MoveBehindTaskBarIfNeeded();
 
   ui::WindowShowState last_window_state_;
+  ui::WindowShowState restored_window_state_ = ui::SHOW_STATE_NORMAL;
   gfx::Rect last_normal_placement_bounds_;
   // Whether to show the WS_THICKFRAME style.
   bool thick_frame_ = true;

@@ -1,0 +1,50 @@
+From bf32696a5f6663bd04d3ef4ecfc678542956ef94 Mon Sep 17 00:00:00 2001
+From: lynxtron <lynxtron@lynxjs.com>
+Date: Sun, 19 Jul 2026 10:44:30 +0800
+Subject: [PATCH] Fix skity_build_gni.py cmake build failure on Windows
+
+The generate_gni_files() function used capture_output=True with
+encoding='utf-8'. On Windows, MSBuild output is GBK-encoded, causing
+UnicodeDecodeError which was swallowed by a bare 'except:' clause,
+making the script incorrectly report 'Build failed!' even though the
+underlying cmake build succeeded.
+
+- Add errors='replace' to the capture_output branch of run_command
+- Switch generate_gni_files to streaming output (capture_output=False)
+- Replace bare 'except:' with 'except Exception' that logs traceback
+---
+ clay/tools/skity_build_gni.py | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/clay/tools/skity_build_gni.py b/clay/tools/skity_build_gni.py
+index 32e774009..cc11ebdc3 100755
+--- a/clay/tools/skity_build_gni.py
++++ b/clay/tools/skity_build_gni.py
+@@ -22,7 +22,8 @@ def run_command(cmd, cwd=None, capture_output=False):
+     try:
+         if capture_output:
+             result = subprocess.run(
+-                cmd, cwd=cwd, check=True, capture_output=True, text=True, encoding='utf-8'
++                cmd, cwd=cwd, check=True, capture_output=True, text=True,
++                encoding='utf-8', errors='replace'
+             )
+             if result.stdout:
+                 print(result.stdout)
+@@ -188,9 +189,12 @@ def generate_gni_files(build_dir, skity_root, enable_codec=False):
+     gni_cmd = ["cmake", "--build", str(build_path), "--target"] + targets
+ 
+     try:
+-        success = run_command(gni_cmd, capture_output=True)
++        success = run_command(gni_cmd, capture_output=False)
+         return success
+-    except:
++    except Exception as e:
++        import traceback
++        print(f"generate_gni_files exception: {e}")
++        traceback.print_exc()
+         return False
+ 
+ 
+-- 
+2.51.1.windows.1
+
