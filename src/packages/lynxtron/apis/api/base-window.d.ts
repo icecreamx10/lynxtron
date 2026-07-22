@@ -742,10 +742,10 @@ export declare class BaseWindow extends EventEmitter {
     listener: (event: Event, direction: string) => void
   ): this;
   /**
-   * Emitted when the system context menu is triggered on the window, this is
-   * normally only triggered when the user right clicks on the non-client area of
-   * your window.  This is the window titlebar or any area you have declared as
-   * `-webkit-app-region: drag` in a frameless window.
+   * Emitted when the system context menu is triggered on the window. This is
+   * normally triggered when the user right clicks the system title bar or a
+   * draggable region in the Lynx UI. In a frameless window, draggable regions
+   * must be explicitly declared using the `-x-app-region: drag` CSS property.
    *
    * Calling `event.preventDefault()` will prevent the menu from being displayed.
    *
