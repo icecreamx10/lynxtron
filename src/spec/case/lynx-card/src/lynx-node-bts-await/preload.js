@@ -7,7 +7,10 @@ const www = async (message) => {
 
 contextBridge.exposeInLynxBTS({
   get: (message) => {
-    return message;
+    return {
+      from: 'contextBridge',
+      message,
+    };
   },
 
   hhhh: async(message) => {
