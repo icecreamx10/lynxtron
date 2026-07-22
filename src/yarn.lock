@@ -1028,6 +1028,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@lynx-js/config-rsbuild-plugin@npm:latest":
+  version: 0.1.1
+  resolution: "@lynx-js/config-rsbuild-plugin@npm:0.1.1"
+  dependencies:
+    "@lynx-js/type-config": "npm:3.6.0"
+  peerDependencies:
+    "@lynx-js/rspeedy": ^0.7.0 || ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0
+  checksum: 1b44a4fdbd4dc2ee16e2183bfb3c50bb7ea8ff38859df701ff24a999bbc447df30a06a7371d8f994407a7b9e49b6d113137debbe25c599334ecbee81feaed354
+  languageName: node
+  linkType: hard
+
 "@lynx-js/css-extract-webpack-plugin@npm:0.7.0":
   version: 0.7.0
   resolution: "@lynx-js/css-extract-webpack-plugin@npm:0.7.0"
@@ -1426,6 +1437,20 @@ __metadata:
     object.groupby: "npm:^1.0.3"
     tinypool: "npm:^2.1.0"
   checksum: 5d0f595e0dc7dd57e71b4c375868966162b4b2ca9cb3c67c16e952d3a8243851702b0d531f0c72439cdd89227bbdb347c73a73a0ca669e4d418b3b5262b08eed
+  languageName: node
+  linkType: hard
+
+"@lynx-js/type-config@npm:3.6.0":
+  version: 3.6.0
+  resolution: "@lynx-js/type-config@npm:3.6.0"
+  checksum: 450004003be8ef9dfcedb1d9ef95a4ad9ebf979de02067155f52441597cf4a682d469b8e61ce6156986d057404f0ff334f21f3b829cd5715203cf96f057ea4fe
+  languageName: node
+  linkType: hard
+
+"@lynx-js/type-config@npm:latest":
+  version: 4.1.0
+  resolution: "@lynx-js/type-config@npm:4.1.0"
+  checksum: 4098a9dfca65e8b34d2489e32fca284b6f68f5154e3a5249a6ff92dfc9bb75592ae8a6f33c57ece308b9adc3391bad0248faa11ae7a272883628cc14d8d6ec1f
   languageName: node
   linkType: hard
 
@@ -7913,6 +7938,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "lynxtron-shell-demo@workspace:packages/lynxtron-shell-demo"
   dependencies:
+    "@lynx-js/config-rsbuild-plugin": "npm:latest"
     "@lynx-js/css-serializer": "npm:latest"
     "@lynx-js/lynx-core": "npm:latest"
     "@lynx-js/lynxtron": "workspace:*"
@@ -7922,6 +7948,7 @@ __metadata:
     "@lynx-js/react": "npm:latest"
     "@lynx-js/react-rsbuild-plugin": "npm:latest"
     "@lynx-js/rspeedy": "npm:latest"
+    "@lynx-js/type-config": "npm:latest"
     "@lynx-js/types": "npm:latest"
     "@lynx-js/web-core": "npm:latest"
     "@lynx-js/web-elements": "npm:latest"

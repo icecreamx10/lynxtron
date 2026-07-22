@@ -4,7 +4,10 @@
 
 import { defineConfig } from '@lynx-js/rspeedy';
 
+import { pluginLynxConfig } from '@lynx-js/config-rsbuild-plugin';
 import { pluginReactLynx } from '@lynx-js/react-rsbuild-plugin';
+import { compilerOptionsKeys, configKeys } from '@lynx-js/type-config';
+import type { CompilerOptions, Config } from '@lynx-js/type-config';
 import { pluginTypeCheck } from '@rsbuild/plugin-type-check';
 import { pluginRspeedyDevReady } from '@lynx-js/lynxtron-dev-plugins/rspeedy';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -59,5 +62,26 @@ export default defineConfig({
       },
     },
   },
-  plugins: [pluginReactLynx(), pluginTypeCheck(), pluginRspeedyDevReady()],
+  plugins: [
+    pluginLynxConfig(
+      {
+        alignMouseEventWithW3C: true,
+        enableCSSInheritance: true,
+      },
+      {
+        configKeys: [...configKeys, 'alignMouseEventWithW3C'],
+        compilerOptionsKeys,
+        validate: (input) =>
+          input as Config &
+            CompilerOptions & {
+              alignMouseEventWithW3C: boolean;
+            },
+      }
+    ),
+    pluginReactLynx({
+      enableCSSInheritance: true,
+    }),
+    pluginTypeCheck(),
+    pluginRspeedyDevReady(),
+  ],
 });
