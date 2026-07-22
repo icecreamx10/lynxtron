@@ -15,6 +15,7 @@ import("build/webpack/webpack.gni")
 import("lynxtron_extra.gni")
 
 if (is_mac) {
+  import("//build/apple/templates/xib.gni")
   import("//build/config/mac/rules.gni")
   import("//third_party/icu/config.gni")
   import("//v8/gni/v8.gni")
@@ -765,6 +766,10 @@ if (is_mac) {
                 "Libraries",
               ])
 
+  xib_processer("lynxtron_main_menu") {
+    sources = [ "shell/common/resources/mac/MainMenu.xib" ]
+  }
+
   action("lynxtron_app_lproj_dirs") {
     outputs = []
     foreach(locale, lynxtron_mac_locales_as_apple_outputs) {
@@ -943,6 +948,7 @@ if (is_mac) {
       ":lynxtron_app_plist",
       ":lynxtron_app_resources",
       ":lynxtron_framework+link",
+      ":lynxtron_main_menu",
       "//base/allocator:early_zone_registration_apple",
     ]
 
