@@ -8,8 +8,12 @@
     "type": "git",
     "url": "https://github.com/lynx-family/lynxtron.git"
   },
+  "dependencies": {
+    "cross-spawn": "^7.0.6"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.js",
     "prepack": "npm run build",
     "prepublishOnly": "npm run build"
   },

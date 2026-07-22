@@ -1118,6 +1118,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lynx-js/lynxtron-dev-plugins@workspace:packages/lynxtron-dev-plugins"
   dependencies:
+    cross-spawn: "npm:^7.0.6"
     typescript: "npm:~5.9.3"
   peerDependencies:
     "@rsbuild/core": ^2.1.5
