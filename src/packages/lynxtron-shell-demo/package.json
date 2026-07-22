@@ -17,6 +17,7 @@
   },
   "private": true,
   "devDependencies": {
+    "@lynx-js/config-rsbuild-plugin": "latest",
     "@lynx-js/css-serializer": "latest",
     "@lynx-js/lynx-core": "latest",
     "@lynx-js/lynxtron": "workspace:*",
@@ -26,6 +27,7 @@
     "@lynx-js/react": "latest",
     "@lynx-js/react-rsbuild-plugin": "latest",
     "@lynx-js/rspeedy": "latest",
+    "@lynx-js/type-config": "latest",
     "@lynx-js/types": "latest",
     "@lynx-js/web-core": "latest",
     "@lynx-js/web-elements": "latest",
