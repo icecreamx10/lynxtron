@@ -273,7 +273,6 @@ void LynxNodeModule::OnRuntimeAttach(
   auto v8_isolate = v8_context->GetIsolate();
   lynx_context_.Reset(v8_isolate, v8_context);
 
-  v8::Locker locker(v8_isolate);
   v8::Isolate::Scope isolate_scope(v8_isolate);
   v8::HandleScope handle_scope(v8_isolate);
 
