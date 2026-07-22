@@ -1,4 +1,5 @@
-import { spawn, execSync } from 'child_process';
+import { execSync } from 'child_process';
+import spawn from 'cross-spawn';
 
 let lynxtronProcess = null;
 let queue = Promise.resolve(null);
@@ -32,7 +33,6 @@ const restartLynxtron = debounce((options) => {
 
     lynxtronProcess = spawn(command, spawnArgs, {
       stdio: 'inherit',
-      shell: true,
       env: {
         ...process.env,
         ...env,

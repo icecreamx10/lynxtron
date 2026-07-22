@@ -2,7 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { spawn, execSync } from 'child_process';
+import { execSync } from 'child_process';
+import spawn from 'cross-spawn';
 import { applyLynxtronAutoLink } from './autolink-rspack.js';
 
 let lynxtronProcess: ReturnType<typeof spawn> | null = null;
@@ -52,7 +53,6 @@ const restartLynxtron = debounce(
 
       lynxtronProcess = spawn(command, spawnArgs, {
         stdio: 'inherit',
-        shell: true,
         env: {
           ...process.env,
           ...env,
