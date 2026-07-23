@@ -76,7 +76,7 @@ index 0d6ef021..d86d54d0 100644
      ]
    }
  
-+  if (is_apple || is_win) {
++  if (is_apple || is_win || is_linux) {
 +    include_dirs = [ "//third_party/node/deps/uv/include" ]
 +    sources += [ "fml/platform/node/message_loop_node.cc" ]
 +  }
@@ -190,7 +190,7 @@ index 9d63d810..5b985083 100644
        ":observer",
      ]
    } else {
-+    if (is_mac || is_win) {
++    if (is_mac || is_win || is_linux) {
 +      include_dirs = [ "//third_party/node/deps/uv/include" ]
 +      base_shared_sources -= [ "threading/js_thread_config_getter.cc" ]
 +      base_shared_sources += [ "node/js_thread_config_getter_node.cc" ]
