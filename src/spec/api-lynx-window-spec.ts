@@ -418,6 +418,43 @@ describe('LynxWindow module', () => {
 
       describe('LynxWindow.restore()', () => {
         ifit(process.platform !== 'linux')(
+          'restores the previous window size',
+          async () => {
+            const initialSize = w.getSize();
+            const shown = once(w, 'show');
+            w.show();
+            await shown;
+
+            const minimized = once(w, 'minimize');
+            w.minimize();
+            await minimized;
+
+            const restored = once(w, 'restore');
+            w.restore();
+            await restored;
+
+            expectBoundsEqual(w.getSize(), initialSize);
+          }
+        );
+
+        ifit(process.platform !== 'linux')(
+          'does not crash when restoring a hidden minimized window',
+          async () => {
+            const shown = once(w, 'show');
+            w.show();
+            await shown;
+
+            const minimized = once(w, 'minimize');
+            w.minimize();
+            await minimized;
+
+            w.hide();
+            w.show();
+            await waitUntil(() => w.isVisible());
+          }
+        );
+
+        ifit(process.platform !== 'linux')(
           'does not emit show when restoring a minimized window',
           async () => {
             let showCount = 0;
@@ -471,6 +508,54 @@ describe('LynxWindow module', () => {
             expect(w.isMaximized()).to.equal(true);
           }
         );
+
+        ifit(process.platform !== 'linux')(
+          'does not break fullscreen state',
+          async () => {
+            const shown = once(w, 'show');
+            w.show();
+            await shown;
+
+            const enterFullScreen = once(w, 'enter-full-screen');
+            w.setFullScreen(true);
+            await enterFullScreen;
+            expect(w.isFullScreen()).to.equal(true);
+
+            w.restore();
+            await setTimeout(1000);
+
+            expect(w.isFullScreen()).to.equal(true);
+            expect(w.isMinimized()).to.equal(false);
+
+            const leaveFullScreen = once(w, 'leave-full-screen');
+            w.setFullScreen(false);
+            await leaveFullScreen;
+          }
+        );
+      });
+
+      ifdescribe(process.platform !== 'linux')('LynxWindow.maximize()', () => {
+        it('shows the window if it is not currently shown', async () => {
+          const shown = once(w, 'show');
+          const maximized = once(w, 'maximize');
+          expect(w.isVisible()).to.equal(false);
+
+          w.maximize();
+          await Promise.all([shown, maximized]);
+
+          expect(w.isMaximized()).to.equal(true);
+          expect(w.isVisible()).to.equal(true);
+
+          const hidden = once(w, 'hide');
+          w.hide();
+          await hidden;
+          expect(w.isVisible()).to.equal(false);
+
+          const shownAgain = once(w, 'show');
+          w.maximize();
+          await shownAgain;
+          expect(w.isVisible()).to.equal(true);
+        });
       });
 
       describe('LynxWindow.unmaximize()', () => {
@@ -864,6 +949,34 @@ describe('LynxWindow module', () => {
           w.setFullScreen(false);
           await leaveFullScreen;
         });
+
+        ifdescribe(process.platform === 'win32')(
+          'setFullScreen(false) on Windows',
+          () => {
+            it('restores a normal visible window from a fullscreen startup state', async () => {
+              const shown = once(w, 'show');
+              w.setFullScreen(true);
+              w.show();
+              await shown;
+
+              const leaveFullScreen = once(w, 'leave-full-screen');
+              w.setFullScreen(false);
+              await leaveFullScreen;
+
+              expect(w.isVisible()).to.equal(true);
+              expect(w.isFullScreen()).to.equal(false);
+            });
+
+            it('keeps the window hidden if it is already hidden', async () => {
+              const leaveFullScreen = once(w, 'leave-full-screen');
+              w.setFullScreen(false);
+              await leaveFullScreen;
+
+              expect(w.isVisible()).to.equal(false);
+              expect(w.isFullScreen()).to.equal(false);
+            });
+          }
+        );
       });
 
       ifdescribe(process.platform === 'darwin')(
@@ -1706,6 +1819,104 @@ describe('LynxWindow module', () => {
             await waitUntil(() => parent.isEnabled() === true);
             expect(parent.isEnabled()).to.equal(true);
           });
+
+          ifit(process.platform === 'win32')(
+            'does not double-count a modal child shown after minimize',
+            async () => {
+              const parent = new LynxWindow({ show: false });
+              const child = new LynxWindow({
+                show: false,
+                parent,
+                modal: true,
+                minimizable: true,
+              });
+
+              const childShown = once(child, 'show');
+              child.show();
+              await childShown;
+              expect(parent.isEnabled()).to.equal(false);
+
+              const minimized = once(child, 'minimize');
+              child.minimize();
+              await minimized;
+              expect(child.isVisible()).to.equal(false);
+              expect(parent.isEnabled()).to.equal(false);
+
+              const childShownAgain = once(child, 'show');
+              child.show();
+              await childShownAgain;
+              child.hide();
+
+              await waitUntil(() => parent.isEnabled());
+              expect(parent.isEnabled()).to.equal(true);
+            }
+          );
+
+          ifdescribe(process.platform === 'win32')(
+            'disabling parent windows',
+            () => {
+              it('can disable and enable a window', () => {
+                const parent = new LynxWindow({ show: false });
+                parent.setEnabled(false);
+                expect(parent.isEnabled()).to.equal(false);
+                parent.setEnabled(true);
+                expect(parent.isEnabled()).to.equal(true);
+              });
+
+              it('re-enables an enabled parent window when closed', async () => {
+                const parent = new LynxWindow({ show: false });
+                const child = new LynxWindow({
+                  show: false,
+                  parent,
+                  modal: true,
+                });
+                const closed = once(child, 'closed');
+                child.show();
+                child.close();
+                await closed;
+                expect(parent.isEnabled()).to.equal(true);
+              });
+
+              it('does not re-enable a disabled parent window when closed', async () => {
+                const parent = new LynxWindow({ show: false });
+                const child = new LynxWindow({
+                  show: false,
+                  parent,
+                  modal: true,
+                });
+                const closed = once(child, 'closed');
+                parent.setEnabled(false);
+                child.show();
+                child.close();
+                await closed;
+                expect(parent.isEnabled()).to.equal(false);
+              });
+
+              it('disables parent window recursively', () => {
+                const parent = new LynxWindow({ show: false });
+                const child = new LynxWindow({
+                  show: false,
+                  parent,
+                  modal: true,
+                });
+                const secondChild = new LynxWindow({
+                  show: false,
+                  parent,
+                  modal: true,
+                });
+
+                child.show();
+                expect(parent.isEnabled()).to.equal(false);
+                secondChild.show();
+                expect(parent.isEnabled()).to.equal(false);
+
+                child.destroy();
+                expect(parent.isEnabled()).to.equal(false);
+                secondChild.destroy();
+                expect(parent.isEnabled()).to.equal(true);
+              });
+            }
+          );
 
           it('defaults minimizable to false for modal child window', () => {
             const parent = new LynxWindow({ show: false });

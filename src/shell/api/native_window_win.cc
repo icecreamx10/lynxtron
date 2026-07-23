@@ -160,10 +160,7 @@ bool NativeWindowWin::IsFocused() {
 }
 
 void NativeWindowWin::Show() {
-  const bool was_visible = IsVisible();
-  if (!was_visible && is_modal() && NativeWindow::parent()) {
-    parent()->IncrementChildModals();
-  }
+  RegisterModalParent();
 
   window_->Show(ui::WindowShowState::SHOW_STATE_NORMAL, gfx::Rect());
   //// explicitly focus the window
@@ -173,18 +170,13 @@ void NativeWindowWin::Show() {
 }
 
 void NativeWindowWin::ShowInactive() {
-  const bool was_visible = IsVisible();
-  if (!was_visible && is_modal() && NativeWindow::parent()) {
-    parent()->IncrementChildModals();
-  }
+  RegisterModalParent();
   window_->Show(ui::SHOW_STATE_INACTIVE, gfx::Rect());
   NotifyWindowShow();
 }
 
 void NativeWindowWin::Hide() {
-  if (is_modal() && NativeWindow::parent()) {
-    parent()->DecrementChildModals();
-  }
+  UnregisterModalParent();
 
   window_->Hide();
 
@@ -204,6 +196,24 @@ bool NativeWindowWin::IsVisible() {
 
 bool NativeWindowWin::IsEnabled() {
   return ::IsWindowEnabled(window_->hwnd());
+}
+
+void NativeWindowWin::RegisterModalParent() {
+  if (!is_modal() || registered_modal_parent_ || !NativeWindow::parent()) {
+    return;
+  }
+
+  registered_modal_parent_ = NativeWindow::parent();
+  registered_modal_parent_->IncrementChildModals();
+}
+
+void NativeWindowWin::UnregisterModalParent() {
+  if (!registered_modal_parent_) {
+    return;
+  }
+
+  registered_modal_parent_->DecrementChildModals();
+  registered_modal_parent_ = nullptr;
 }
 
 void NativeWindowWin::IncrementChildModals() {
@@ -279,14 +289,11 @@ bool NativeWindowWin::IsMaximized() const {
 }
 
 void NativeWindowWin::Minimize() {
-  if (IsVisible()) {
+  if (window_->IsVisible()) {
     window_->Minimize();
   } else {
-    const bool was_visible = IsVisible();
+    RegisterModalParent();
     window_->Show(ui::SHOW_STATE_MINIMIZED, gfx::Rect());
-    if (!was_visible && is_modal() && NativeWindow::parent()) {
-      parent()->IncrementChildModals();
-    }
   }
 }
 
@@ -655,14 +662,13 @@ bool NativeWindowWin::IsFocusable() const {
 
 void NativeWindowWin::SetParentWindow(NativeWindow* parent) {
   NativeWindow* const old_parent = NativeWindow::parent();
+  const bool was_registered = registered_modal_parent_ != nullptr;
+  if (was_registered && old_parent != parent) {
+    UnregisterModalParent();
+  }
   NativeWindow::SetParentWindow(parent);
-  if (is_modal() && IsVisible() && old_parent != parent) {
-    if (old_parent) {
-      old_parent->DecrementChildModals();
-    }
-    if (parent) {
-      parent->IncrementChildModals();
-    }
+  if (was_registered && old_parent != parent) {
+    RegisterModalParent();
   }
   HWND parent_hwnd = parent ? parent->GetNativeWindowHandle() : nullptr;
   ::SetWindowLongPtr(window_->hwnd(), GWLP_HWNDPARENT,
@@ -950,9 +956,10 @@ void NativeWindowWin::HandleWindowSizeChanging() {}
 void NativeWindowWin::HandleWindowSizeUnchanged() {}
 
 void NativeWindowWin::HandleDestroyed() {
-  if (is_modal() && NativeWindow::parent()) {
-    static_cast<NativeWindowWin*>(parent())->DecrementChildModals();
-    parent()->Focus(true);
+  NativeWindow* const modal_parent = registered_modal_parent_;
+  UnregisterModalParent();
+  if (modal_parent) {
+    modal_parent->Focus(true);
   }
   NotifyWindowClosed();
 }
@@ -994,11 +1001,8 @@ void NativeWindowWin::Maximize() {
     if (IsVisible()) {
       window_->Maximize();
     } else {
-      const bool was_visible = IsVisible();
+      RegisterModalParent();
       window_->Show(ui::SHOW_STATE_MAXIMIZED, gfx::Rect());
-      if (!was_visible && is_modal() && NativeWindow::parent()) {
-        parent()->IncrementChildModals();
-      }
       NotifyWindowShow();
     }
   } else {
