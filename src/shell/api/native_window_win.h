@@ -161,6 +161,8 @@ class NativeWindowWin : public NativeWindow,
   void NotifyWindowMessage(UINT message, WPARAM w_param, LPARAM l_param);
 
  private:
+  void RegisterModalParent();
+  void UnregisterModalParent();
   // Enable/disable:
   bool ShouldBeEnabled();
   void SetEnabledInternal(bool enabled);
@@ -188,6 +190,10 @@ class NativeWindowWin : public NativeWindow,
   // How many modal children this window has;
   // used to determine enabled state
   unsigned int num_modal_children_ = 0;
+  // The parent whose modal child count includes this window. This is tracked
+  // separately from IsVisible(), because minimized windows are not visible to
+  // the public API but still have the WS_VISIBLE style.
+  raw_ptr<NativeWindow> registered_modal_parent_ = nullptr;
   bool movable_ = true;
   bool fullscreenable_ = true;
   std::string title_;
