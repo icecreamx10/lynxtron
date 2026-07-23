@@ -500,14 +500,6 @@ void NativeWindow::NotifyWindowSheetEnd() {
   observers_.Notify(&NativeWindowObserver::OnWindowSheetEnd);
 }
 
-void NativeWindow::NotifyWindowWillEnterFullScreen() {
-  observers_.Notify(&NativeWindowObserver::OnWindowWillEnterFullScreen);
-}
-
-void NativeWindow::NotifyWindowWillLeaveFullScreen() {
-  observers_.Notify(&NativeWindowObserver::OnWindowWillLeaveFullScreen);
-}
-
 void NativeWindow::NotifyWindowLeaveFullScreen() {
   observers_.Notify(&NativeWindowObserver::OnWindowLeaveFullScreen);
 }

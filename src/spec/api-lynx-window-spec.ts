@@ -880,37 +880,21 @@ describe('LynxWindow module', () => {
           w = (null as unknown) as LynxWindow;
         });
 
-        // FIXME(Guo Xi): Fix it
-        ifit(process.platform !== 'win32')(
-          'can be changed with the fullScreen property',
-          async () => {
-            const shown = once(w, 'show');
-            w.show();
-            await shown;
+        it('can be changed with the fullScreen property', async () => {
+          const shown = once(w, 'show');
+          w.show();
+          await shown;
 
-            {
-              const events: string[] = [];
-              w.once('will-enter-full-screen', () => events.push('will-enter'));
-              w.once('enter-full-screen', () => events.push('enter'));
-              w.fullScreen = true;
-              await waitUntil(() => events.length === 2);
-              expect(events).to.deep.equal(['will-enter', 'enter']);
-            }
+          const entered = once(w, 'enter-full-screen');
+          w.fullScreen = true;
+          await entered;
+          expect(w.fullScreen).to.equal(true);
 
-            expect(w.fullScreen).to.equal(true);
-
-            {
-              const events: string[] = [];
-              w.once('will-leave-full-screen', () => events.push('will-leave'));
-              w.once('leave-full-screen', () => events.push('leave'));
-              w.fullScreen = false;
-              await waitUntil(() => events.length === 2);
-              expect(events).to.deep.equal(['will-leave', 'leave']);
-            }
-
-            expect(w.fullScreen).to.equal(false);
-          }
-        );
+          const left = once(w, 'leave-full-screen');
+          w.fullScreen = false;
+          await left;
+          expect(w.fullScreen).to.equal(false);
+        });
 
         it('can be changed with setFullScreen', async () => {
           const shown = once(w, 'show');
