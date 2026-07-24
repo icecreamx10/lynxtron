@@ -64,9 +64,9 @@ NativeWindowWin::NativeWindowWin(const gin_helper::Dictionary& options,
       window_(std::make_unique<ui::HWNDMessageHandler>(this)) {
   options.Get(options::kTitle, &title_);
 
-  // On Windows we rely on the CanResize() to indicate whether window can be
-  // resized, and it should be set before window is created.
-  options.Get(options::kFocusable, &can_activate_);
+  // Keep the requested focusable state so delegate activation checks and the
+  // initial HWND style stay in sync from window creation.
+  options.Get(options::kFocusable, &focusable_);
 
   // Transparent window must not have thick frame.
   options.Get("thickFrame", &thick_frame_);
@@ -109,6 +109,9 @@ NativeWindowWin::NativeWindowWin(const gin_helper::Dictionary& options,
   if (window_type() == "toolbar") {
     ex_style |= WS_EX_TOOLWINDOW;
   }
+  if (!focusable_) {
+    ex_style |= WS_EX_NOACTIVATE;
+  }
 
   window_->set_window_ex_style(ex_style);
 
@@ -148,6 +151,10 @@ void NativeWindowWin::Focus(bool focus) {
     return;
   }
 
+  if (focus && !IsFocusable()) {
+    return;
+  }
+
   if (focus) {
     window_->Activate();
   } else {
@@ -162,9 +169,13 @@ bool NativeWindowWin::IsFocused() {
 void NativeWindowWin::Show() {
   RegisterModalParent();
 
-  window_->Show(ui::WindowShowState::SHOW_STATE_NORMAL, gfx::Rect());
-  //// explicitly focus the window
-  window_->Activate();
+  window_->Show(IsFocusable() ? ui::WindowShowState::SHOW_STATE_NORMAL
+                              : ui::WindowShowState::SHOW_STATE_INACTIVE,
+                gfx::Rect());
+  // Explicitly focus the window when it can be focused.
+  if (IsFocusable()) {
+    window_->Activate();
+  }
 
   NotifyWindowShow();
 }
@@ -638,26 +649,28 @@ double NativeWindowWin::GetOpacity() {
 }
 
 void NativeWindowWin::SetFocusable(bool focusable) {
-  can_activate_ = focusable;
+  focusable_ = focusable;
+  UpdateFocusableStyle();
+  SetSkipTaskbar(!focusable);
+  if (!focusable) {
+    Focus(false);
+  }
+}
+
+void NativeWindowWin::UpdateFocusableStyle() {
   LONG ex_style = ::GetWindowLong(GetNativeWindowHandle(), GWL_EXSTYLE);
-  if (focusable) {
+  if (focusable_) {
     ex_style &= ~WS_EX_NOACTIVATE;
   } else {
     ex_style |= WS_EX_NOACTIVATE;
   }
   ::SetWindowLong(GetNativeWindowHandle(), GWL_EXSTYLE, ex_style);
-  if (!focusable) {
-    SetSkipTaskbar(true);
-  } else {
-    SetSkipTaskbar(false);
-  }
-  Focus(false);
 }
 
 bool NativeWindowWin::IsFocusable() const {
   LONG ex_style = ::GetWindowLong(GetNativeWindowHandle(), GWL_EXSTYLE);
   bool no_activate = ex_style & WS_EX_NOACTIVATE;
-  return !no_activate && can_activate_;
+  return !no_activate && focusable_;
 }
 
 void NativeWindowWin::SetParentWindow(NativeWindow* parent) {
@@ -805,7 +818,7 @@ bool NativeWindowWin::CanMinimize() const {
 }
 
 bool NativeWindowWin::CanActivate() const {
-  return can_activate_;
+  return focusable_;
 }
 
 bool NativeWindowWin::WantsMouseEventsWhenInactive() const {
@@ -967,7 +980,7 @@ void NativeWindowWin::HandleDestroyed() {
 bool NativeWindowWin::HandleInitialFocus(ui::WindowShowState show_state) {
   // Need to focus on LynxView window handle, so LynxView can get keyboard
   // message
-  return can_activate_;
+  return focusable_;
 }
 
 void NativeWindowWin::HandleMove() {

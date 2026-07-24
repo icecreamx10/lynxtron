@@ -1938,16 +1938,61 @@ describe('LynxWindow module', () => {
       );
 
       describe('LynxWindow.setFocusable()', () => {
-        // FIXME(Guo Xi): Fix it
-        ifit(process.platform !== 'win32')(
-          'can set unfocusable window to focusable',
+        it('can set unfocusable window to focusable', async () => {
+          const w2 = new LynxWindow({ focusable: false });
+          const w2Focused = once(w2, 'focus');
+          w2.setFocusable(true);
+          w2.focus();
+          await w2Focused;
+          await closeWindow(w2, { assertNotWindows: false });
+        });
+
+        ifit(process.platform === 'win32' || process.platform === 'darwin')(
+          'does not focus when showing an unfocusable window',
           async () => {
-            const w2 = new LynxWindow({ focusable: false });
-            const w2Focused = once(w2, 'focus');
-            w2.setFocusable(true);
-            w2.focus();
-            await w2Focused;
-            await closeWindow(w2, { assertNotWindows: false });
+            const w2 = new LynxWindow({ show: false, focusable: false });
+            try {
+              let focused = false;
+              w2.once('focus', () => {
+                focused = true;
+              });
+
+              const shown = once(w2, 'show');
+              w2.show();
+              await shown;
+              await setTimeout(100);
+
+              expect(w2.isFocused()).to.equal(false);
+              expect(focused).to.equal(false);
+            } finally {
+              await closeWindow(w2, { assertNotWindows: false });
+            }
+          }
+        );
+
+        ifit(process.platform === 'win32' || process.platform === 'darwin')(
+          'does not focus after setFocusable(false)',
+          async () => {
+            const w2 = new LynxWindow({ show: false });
+            try {
+              w2.setFocusable(false);
+
+              let focused = false;
+              w2.once('focus', () => {
+                focused = true;
+              });
+
+              const shown = once(w2, 'show');
+              w2.show();
+              await shown;
+              w2.focus();
+              await setTimeout(100);
+
+              expect(w2.isFocused()).to.equal(false);
+              expect(focused).to.equal(false);
+            } finally {
+              await closeWindow(w2, { assertNotWindows: false });
+            }
           }
         );
       });

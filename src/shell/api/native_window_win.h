@@ -168,6 +168,7 @@ class NativeWindowWin : public NativeWindow,
   void SetEnabledInternal(bool enabled);
   // Maintain window placement.
   void MoveBehindTaskBarIfNeeded();
+  void UpdateFocusableStyle();
 
   ui::WindowShowState last_window_state_;
   ui::WindowShowState restored_window_state_ = ui::SHOW_STATE_NORMAL;
@@ -198,7 +199,7 @@ class NativeWindowWin : public NativeWindow,
   bool fullscreenable_ = true;
   std::string title_;
   double opacity_ = 1.0;
-  bool can_activate_ = true;
+  bool focusable_ = true;
   SizeConstraints old_size_constraints_;
   ui::ZOrderLevel z_order_ = ui::ZOrderLevel::kNormal;
   Microsoft::WRL::ComPtr<ITaskbarList3> taskbar_list_;
