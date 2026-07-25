@@ -1,10 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import https from 'node:https';
-import { pipeline } from 'node:stream/promises';
 import { spawn } from 'node:child_process';
 import { zip } from 'compressing';
+import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,22 +29,12 @@ function getLynxtronVersion() {
 }
 
 async function downloadFile(url, destPath) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(destPath);
-    https.get(url, (response) => {
-      if (response.statusCode !== 200) {
-        fs.unlink(destPath, () => {});
-        reject(new Error(`Failed to download ${url}, status: ${response.statusCode}`));
-        return;
-      }
-      pipeline(response, file)
-        .then(resolve)
-        .catch(reject);
-    }).on('error', (err) => {
-      fs.unlink(destPath, () => {});
-      reject(err);
-    });
-  });
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download ${url}, status: ${response.status}`);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fs.promises.writeFile(destPath, buffer);
 }
 
 async function extractZip(zipPath, destDir) {
@@ -93,12 +82,24 @@ function findModulesWithNativeCode(buildPath) {
   const packages = fs.readdirSync(nodeModulesPath, { withFileTypes: true });
   
   for (const pkg of packages) {
-    if (!pkg.isDirectory()) continue;
     if (pkg.name.startsWith('.')) continue;
-    
+
     const pkgPath = path.join(nodeModulesPath, pkg.name);
+
+    // Under pnpm the package entries in node_modules are symlinks into the
+    // .pnpm store, so Dirent.isDirectory() (which does NOT follow symlinks)
+    // reports false. Use statSync, which follows the link, to get the real
+    // type. Skip anything that isn't ultimately a directory.
+    let stats;
+    try {
+      stats = fs.statSync(pkgPath);
+    } catch {
+      continue; // broken symlink
+    }
+    if (!stats.isDirectory()) continue;
+
     const bindingGypPath = path.join(pkgPath, 'binding.gyp');
-    
+
     if (fs.existsSync(bindingGypPath)) {
       modules.push(pkgPath);
     }
