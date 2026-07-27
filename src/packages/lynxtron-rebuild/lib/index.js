@@ -123,7 +123,8 @@ async function rebuildModule(modulePath, headersDir, electronVersion, arch) {
     
     const nodeGyp = spawn('npx', ['node-gyp', ...args], {
       cwd: modulePath,
-      stdio: 'inherit'
+      stdio: 'inherit',
+      shell: true
     });
     
     nodeGyp.on('error', (err) => {
