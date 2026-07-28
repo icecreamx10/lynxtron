@@ -2,11 +2,13 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { zip } from 'compressing';
 import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const BASE_URL = '';
 
@@ -118,18 +120,24 @@ async function rebuildModule(modulePath, headersDir, electronVersion, arch) {
       '--build-from-source',
       '--nodedir', headersDir
     ];
-    
+
     console.log(`Rebuilding ${path.basename(modulePath)}...`);
-    
-    const nodeGyp = spawn('npx', ['node-gyp', ...args], {
+
+    // Resolve node-gyp inside this package's own dependency tree and drive it
+    // with the current Node runtime. Older versions shelled out to `npx`,
+    // which fails inside packaged Electron/Lynxtron apps where npx isn't on
+    // PATH (e.g. GUI launches from Finder / installers with a stripped PATH).
+    const nodeGypBin = require.resolve('node-gyp/bin/node-gyp.js');
+
+    const nodeGyp = spawn(process.execPath, [nodeGypBin, ...args], {
       cwd: modulePath,
-      stdio: 'inherit'
+      stdio: 'inherit',
     });
-    
+
     nodeGyp.on('error', (err) => {
       reject(err);
     });
-    
+
     nodeGyp.on('close', (code) => {
       if (code === 0) {
         console.log(`Successfully rebuilt ${path.basename(modulePath)}`);
