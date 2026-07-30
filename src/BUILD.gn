@@ -1177,6 +1177,7 @@ dist_zip("lynxtron_dist_zip") {
 test("lynxtron_unittests") {
   deps = [
     ":lynxtron_lib",
+    "shell/ui/skia:skia_ext",
     "//base",
     "//base/test:test_support",
     "//gin",
@@ -1214,6 +1215,13 @@ test("lynxtron_unittests") {
     "shell/test/shell_test.h",
     "shell/test/shell_v8_test.h",
   ]
+
+  if (is_win) {
+    sources += [
+      "shell/api/dpi_win_unittest.cc",
+      "shell/ui/platform_window/win/hwnd_message_handler_unittest.cc",
+    ]
+  }
 }
 
 group("lynxtron_extension_group") {

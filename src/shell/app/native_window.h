@@ -114,6 +114,9 @@ class NativeWindow : public base::SupportsUserData {
   virtual float GetDevicePixelRatio() const = 0;
   virtual void SetPosition(const gfx::Point& position, bool animate);
   virtual gfx::Point GetPosition() const;
+  // Content sizes and bounds use platform-independent coordinates (DIP).
+  // They exclude the platform non-client area, such as the title bar, window
+  // border, and native menu.
   virtual void SetContentSize(const gfx::Size& size, bool animate);
   virtual gfx::Size GetContentSize() const;
   virtual void SetContentBounds(const gfx::Rect& bounds, bool animate);
@@ -326,7 +329,9 @@ class NativeWindow : public base::SupportsUserData {
   bool closable_ = true;
   std::string window_type_;
 
-  // Converts between content bounds and window bounds.
+  // Converts between content bounds and outer window bounds. Both input and
+  // output use platform-independent coordinates (DIP); implementations account
+  // only for the platform non-client area and do not expose native pixels.
   virtual gfx::Rect ContentBoundsToWindowBounds(
       const gfx::Rect& bounds) const = 0;
   virtual gfx::Rect WindowBoundsToContentBounds(
