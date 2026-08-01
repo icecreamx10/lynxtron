@@ -599,18 +599,27 @@ void Application::DockSetIcon(v8::Isolate* isolate, v8::Local<v8::Value> icon) {
 
 void Application::ShowAboutPanel() {
   NSDictionary* options = DictionaryValueToNSDictionary(about_panel_options_);
+  NSMutableDictionary* mutable_options = [options mutableCopy];
+
+  NSString* icon_path = (NSString*)options[@"IconPath"];
+  if (icon_path != nil) {
+    NSImage* icon = [[NSImage alloc] initWithContentsOfFile:icon_path];
+    [mutable_options removeObjectForKey:@"IconPath"];
+    if (icon != nil) {
+      [mutable_options setValue:icon forKey:NSAboutPanelOptionApplicationIcon];
+    }
+  }
 
   // Credits must be a NSAttributedString instead of NSString
   NSString* credits = (NSString*)options[@"Credits"];
   if (credits != nil) {
-    NSMutableDictionary* mutable_options = [options mutableCopy];
     NSAttributedString* creditString = [[NSAttributedString alloc]
         initWithString:credits
             attributes:@{NSForegroundColorAttributeName : [NSColor textColor]}];
 
     [mutable_options setValue:creditString forKey:@"Credits"];
-    options = [NSDictionary dictionaryWithDictionary:mutable_options];
   }
+  options = [NSDictionary dictionaryWithDictionary:mutable_options];
 
   [[LynxtronApplication sharedApplication]
       orderFrontStandardAboutPanelWithOptions:options];

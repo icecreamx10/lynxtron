@@ -23,6 +23,7 @@
 #include "base/win/registry.h"
 #include "base/win/shlwapi.h"  // NOLINT(build/include_order)
 #include "base/win/windows_version.h"
+#include "shell/api/ui/message_box.h"
 #include "shell/api/ui/win/jump_list.h"
 #include "shell/app/application.h"
 #include "shell/app/javascript_environment.h"
@@ -30,6 +31,7 @@
 #include "shell/common/application_info.h"
 #include "shell/common/gin_converters/login_item_settings_converter.h"
 #include "shell/common/gin_helper/dictionary.h"
+#include "shell/common/skia_util.h"
 #include "shell/common/thread_restrictions.h"
 #include "src/lynxtron_version.h"
 
@@ -807,65 +809,62 @@ bool Application::IsEmojiPanelSupported() {
   return base::win::GetVersion() >= base::win::Version::WIN10_RS4;
 }
 
-// void Application::ShowEmojiPanel() {
-//   // This sends Windows Key + '.' (both keydown and keyup events).
-//   // "SendInput" is used because Windows needs to receive these events and
-//   // open the Emoji picker.
-//   INPUT input[4] = {};
-//   input[0].type = INPUT_KEYBOARD;
-//   input[0].ki.wVk = ui::WindowsKeyCodeForKeyboardCode(ui::VKEY_COMMAND);
-//   input[1].type = INPUT_KEYBOARD;
-//   input[1].ki.wVk = ui::WindowsKeyCodeForKeyboardCode(ui::VKEY_OEM_PERIOD);
+void Application::ShowEmojiPanel() {
+  // This sends Windows Key + '.' (both keydown and keyup events).
+  // "SendInput" is used because Windows needs to receive these events and
+  // open the Emoji picker.
+  INPUT input[4] = {};
+  input[0].type = INPUT_KEYBOARD;
+  input[0].ki.wVk = VK_LWIN;
+  input[1].type = INPUT_KEYBOARD;
+  input[1].ki.wVk = VK_OEM_PERIOD;
 
-//   input[2].type = INPUT_KEYBOARD;
-//   input[2].ki.wVk = ui::WindowsKeyCodeForKeyboardCode(ui::VKEY_COMMAND);
-//   input[2].ki.dwFlags |= KEYEVENTF_KEYUP;
-//   input[3].type = INPUT_KEYBOARD;
-//   input[3].ki.wVk = ui::WindowsKeyCodeForKeyboardCode(ui::VKEY_OEM_PERIOD);
-//   input[3].ki.dwFlags |= KEYEVENTF_KEYUP;
-//   ::SendInput(4, input, sizeof(INPUT));
-// }
+  input[2].type = INPUT_KEYBOARD;
+  input[2].ki.wVk = VK_LWIN;
+  input[2].ki.dwFlags |= KEYEVENTF_KEYUP;
+  input[3].type = INPUT_KEYBOARD;
+  input[3].ki.wVk = VK_OEM_PERIOD;
+  input[3].ki.dwFlags |= KEYEVENTF_KEYUP;
+  ::SendInput(4, input, sizeof(INPUT));
+}
 
-// #if !BUILDFLAG(IS_NODE_LYNX)
-// void Application::ShowAboutPanel() {
-//   base::Value dict(base::Value::Type::DICTIONARY);
-//   std::string aboutMessage = "";
-//   gfx::ImageSkia image;
+void Application::ShowAboutPanel() {
+  base::Value::Dict dict;
+  std::string about_message;
+  gfx::ImageSkia image;
 
-//   // grab defaults from Windows .EXE file
-//   std::unique_ptr<FileVersionInfo> exe_info = FetchFileVersionInfo();
-//   dict.SetStringKey("applicationName", exe_info->file_description());
-//   dict.SetStringKey("applicationVersion", exe_info->product_version());
+  // grab defaults from Windows .EXE file
+  std::unique_ptr<FileVersionInfo> exe_info = FetchFileVersionInfo();
+  dict.Set("applicationName", base::UTF16ToUTF8(exe_info->file_description()));
+  dict.Set("applicationVersion",
+           base::UTF16ToUTF8(exe_info->product_version()));
 
-//   if (about_panel_options_.is_dict()) {
-//     dict.MergeDictionary(&about_panel_options_);
-//   }
+  dict.Merge(about_panel_options_.Clone());
 
-//   std::vector<std::string> stringOptions = {
-//       "applicationName", "applicationVersion", "copyright", "credits"};
+  std::vector<std::string> stringOptions = {
+      "applicationName", "applicationVersion", "copyright", "credits"};
 
-//   const std::string* str;
-//   for (std::string opt : stringOptions) {
-//     if ((str = dict.FindStringKey(opt))) {
-//       aboutMessage.append(*str).append("\r\n");
-//     }
-//   }
+  const std::string* str;
+  for (std::string opt : stringOptions) {
+    if ((str = dict.FindString(opt))) {
+      about_message.append(*str).append("\r\n");
+    }
+  }
 
-//   if ((str = dict.FindStringKey("iconPath"))) {
-//     base::FilePath path = base::FilePath::FromUTF8Unsafe(*str);
-//     lynxtron::util::PopulateImageSkiaRepsFromPath(&image, path);
-//   }
+  if ((str = dict.FindString("iconPath"))) {
+    base::FilePath path = base::FilePath::FromUTF8Unsafe(*str);
+    lynxtron::util::PopulateImageSkiaRepsFromPath(&image, path);
+  }
 
-//   electron::MessageBoxSettings settings = {};
-//   settings.message = aboutMessage;
-//   settings.icon = image;
-//   settings.type = electron::MessageBoxType::kInformation;
-//   electron::ShowMessageBoxSync(settings);
-// }
+  lynxtron::MessageBoxSettings settings = {};
+  settings.message = about_message;
+  settings.icon = image;
+  settings.type = lynxtron::MessageBoxType::kInformation;
+  lynxtron::ShowMessageBoxSync(settings);
+}
 
-// void Application::SetAboutPanelOptions(base::DictionaryValue options) {
-//   about_panel_options_ = std::move(options);
-// }
-// #endif
+void Application::SetAboutPanelOptions(base::Value::Dict options) {
+  about_panel_options_ = std::move(options);
+}
 
 }  // namespace lynxtron
