@@ -6,6 +6,10 @@ inputs:
   build-arch:
     description: The architecture of lynxtron we are building. It could be x64,arm64
     required: true
+  enable-inspector:
+    description: Whether to enable the inspector (true/false).
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -31,7 +35,11 @@ runs:
         brew install cmake
         cd ${{ github.workspace }}/lynxtron
         source lynxtron_tools/envsetup.sh
-        python3 lynxtron_tools/gn/gn.py --mac-cpu ${{ inputs.build-arch }}
+        GN_EXTRA_ARGS=""
+        if [ "${{ inputs.enable-inspector }}" = "true" ]; then
+          GN_EXTRA_ARGS="--enable-inspector"
+        fi
+        python3 lynxtron_tools/gn/gn.py --mac-cpu ${{ inputs.build-arch }} $GN_EXTRA_ARGS
         ninja -C out/Release lynxtron_app
         grep -q 'USE_PARTITION_ALLOC_AS_MALLOC() (0)' out/Release/gen/base/allocator/partition_allocator/src/partition_alloc/buildflags.h
         grep -q 'ENABLE_BACKUP_REF_PTR_SUPPORT() (0)' out/Release/gen/base/allocator/partition_allocator/src/partition_alloc/buildflags.h

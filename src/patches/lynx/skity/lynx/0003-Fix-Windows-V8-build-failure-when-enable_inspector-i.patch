@@ -1,0 +1,41 @@
+From 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b Mon Sep 17 00:00:00 2001
+From: lynxtron <lynxtron@lynxjs.com>
+Date: Sat, 02 Aug 2026 00:00:00 +0800
+Subject: [PATCH] Fix Windows V8 build failure when enable_inspector is false
+
+Add lynx_v8_bridge dependency to lynx_windows_group when jsengine_type is
+v8, so that V8 runtime symbols (makeV8Runtime, V8PlatformData::SetV8Platform)
+are always linked regardless of the enable_inspector flag.
+
+This mirrors the existing behavior on macOS (platform/darwin/macos/BUILD.gn),
+where lynx_v8_bridge is added as a dependency whenever jsengine_type == "v8",
+independent of the inspector setting.
+
+On Windows, the V8 bridge sources were only pulled in transitively through
+the devtool/logbox dependency path (enable_inspector && enable_logbox).
+When enable_inspector is false, those symbols are missing, causing linker
+errors for lynx_env.cc and runtime_manager.cc which always reference V8
+APIs on Windows when JS_ENGINE_TYPE == 0.
+---
+ platform/windows/BUILD.gn | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/platform/windows/BUILD.gn b/platform/windows/BUILD.gn
+index abcdef123..123456789 100644
+--- a/platform/windows/BUILD.gn
++++ b/platform/windows/BUILD.gn
+@@ -56,6 +56,12 @@ group("lynx_windows_group") {
+         "../../third_party/napi:v8",
+       ]
+     }
++  }
++
++  if (jsengine_type == "v8") {
++    deps += [
++      "../../devtool/lynx_devtool/js_debug:lynx_v8_bridge",
++    ]
+   }
+ }
+ 
+-- 
+2.30.0

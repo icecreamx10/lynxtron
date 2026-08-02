@@ -6,6 +6,10 @@ inputs:
   build-arch:
     description: The architecture of lynxtron we are building. It could be x64,x86
     required: true
+  enable-inspector:
+    description: Whether to enable the inspector (true/false).
+    required: false
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -53,7 +57,11 @@ runs:
         cd ${{ github.workspace }}/lynxtron
         .\lynxtron_tools\envsetup.ps1
         $env:PATH = "$pwd\buildtools\gn;$pwd\buildtools\ninja;$pwd\buildtools\sccache;$env:PATH"
-        python lynxtron_tools\gn\gn.py --windows-cpu ${{ inputs.build-arch }}
+        $gnExtraArgs = @()
+        if ('${{ inputs.enable-inspector }}' -eq 'true') {
+          $gnExtraArgs += '--enable-inspector'
+        }
+        python lynxtron_tools\gn\gn.py --windows-cpu ${{ inputs.build-arch }} @gnExtraArgs
         buildtools\ninja\ninja.exe -C out\Release lynxtron_app
         $buildflags = Get-Content out\Release\gen\base\allocator\partition_allocator\src\partition_alloc\buildflags.h -Raw
         if ($buildflags -notmatch 'USE_PARTITION_ALLOC_AS_MALLOC\(\) \(0\)') { throw 'USE_PARTITION_ALLOC_AS_MALLOC must be disabled for Lynxtron release builds' }
