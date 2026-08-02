@@ -22,7 +22,7 @@ def get_current_os():
   else:
     return system.lower()
 
-def get_default_gn_args(is_debug, enable_enlarge_stack):
+def get_default_gn_args(is_debug, enable_enlarge_stack, enable_inspector):
   gn_args = ''
   if is_debug:
     gn_args += 'import("//src/build/args/debug.gn") '
@@ -53,7 +53,10 @@ def get_default_gn_args(is_debug, enable_enlarge_stack):
   gn_args += 'enable_lto=false '
   gn_args += 'enable_lepusng_worklet=true '
   gn_args += 'enable_napi_binding=true '
-  gn_args += 'enable_inspector=true '
+  if enable_inspector:
+    gn_args += 'enable_inspector=true '
+  else:
+    gn_args += 'enable_inspector=false '
   gn_args += 'jsengine_type="v8" '
   gn_args += 'use_primjs_napi=true '
   gn_args += 'enable_skity=true '
@@ -90,13 +93,14 @@ def parse_args(args):
   parser.add_argument('--mac-cpu', type=str, choices=['x64', 'arm64'], default='arm64')
   parser.add_argument('--windows-cpu', type=str, choices=['x64', 'arm64', 'x86'], default = 'x86')
   parser.add_argument('--enable-enlarge-stack', dest='enable_enlarge_stack', action='store_true', default=False)
+  parser.add_argument('--enable-inspector', dest='enable_inspector', action='store_true', default=False)
 
   return parser.parse_args(args)
 
 def main(argv):
   args = parse_args(argv)
   gn_args = ''
-  gn_args += get_default_gn_args(args.is_debug, args.enable_enlarge_stack)
+  gn_args += get_default_gn_args(args.is_debug, args.enable_enlarge_stack, args.enable_inspector)
   if args.gn_args:
     gn_args += args.gn_args
 
