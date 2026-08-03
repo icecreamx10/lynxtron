@@ -29,7 +29,10 @@ export default defineConfig({
         },
       },
       output: {
-        assetPrefix: `file://${path.resolve(process.cwd(), './dist')}/`,
+        assetPrefix:
+          selectedCard === 'react-lazy'
+            ? '/'
+            : `file://${path.resolve(process.cwd(), './dist')}/`,
         distPath: {
           root: './dist',
         },
