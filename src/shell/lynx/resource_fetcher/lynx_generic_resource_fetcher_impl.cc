@@ -47,6 +47,7 @@ void FetchResourceOnUIThread(
   }
 
   std::string url = resource_fetcher::RewriteRequestUrl(request->GetUrl());
+  url = lynx_window->ResolveResourceUrl(url);
   resource_fetcher::HandleProtocolRequest(
       request, response, url, [request, response, lynx_window, url]() {
         if (!lynx_window) {
