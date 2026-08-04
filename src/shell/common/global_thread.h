@@ -97,6 +97,8 @@ class GlobalThread {
   GlobalThread(const GlobalThread&) = delete;
   GlobalThread& operator=(const GlobalThread&) = delete;
 
+  static void ResetGlobalsForTesting();
+
   // Callable on any thread.  Returns whether you're currently on a particular
   // thread.  To DCHECK this, use the DCHECK_CURRENTLY_ON() macro above.
   [[nodiscard]] static bool CurrentlyOn(ID identifier);
