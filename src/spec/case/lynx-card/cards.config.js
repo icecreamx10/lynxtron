@@ -5,5 +5,6 @@ module.exports = {
     'lynx-fetch': './src/lynx-fetch/index.tsx',
     'react-lazy': './src/react-lazy/index.tsx',
     'lynx-node-bts-await': './src/lynx-node-bts-await/index.tsx',
+    'metadata-update': './src/metadata-update/index.tsx',
   },
 };
