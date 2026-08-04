@@ -156,13 +156,27 @@ GlobalThread::~GlobalThread() {
             GlobalThreadState::RUNNING);
   globals.states[ID::UI].store(GlobalThreadState::SHUTDOWN,
                                std::memory_order_relaxed);
-  globals.task_runners[ID::UI] = nullptr;
+  DCHECK(globals.task_runners[ID::UI]);
 
   DCHECK_EQ(globals.states[ID::IO].load(std::memory_order_relaxed),
             GlobalThreadState::RUNNING);
   globals.states[ID::IO].store(GlobalThreadState::SHUTDOWN,
                                std::memory_order_relaxed);
-  globals.task_runners[ID::IO] = nullptr;
+  DCHECK(globals.task_runners[ID::IO]);
+}
+
+// static
+void GlobalThread::ResetGlobalsForTesting() {
+  GlobalThreadGlobals& globals = GetGlobalThreadGlobals();
+  DCHECK_CALLED_ON_VALID_THREAD(globals.main_thread_checker_);
+
+  for (ID identifier : {ID::UI, ID::IO}) {
+    DCHECK_EQ(globals.states[identifier].load(std::memory_order_relaxed),
+              GlobalThreadState::SHUTDOWN);
+    globals.states[identifier].store(GlobalThreadState::UNINITIALIZED,
+                                     std::memory_order_relaxed);
+    globals.task_runners[identifier] = nullptr;
+  }
 }
 
 // Callable on any thread.  Returns whether you're currently on a particular

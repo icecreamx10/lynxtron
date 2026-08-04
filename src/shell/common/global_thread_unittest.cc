@@ -22,7 +22,10 @@ class GlobalThreadTest : public testing::Test {
  protected:
   void SetUp() override { global_thread_ = std::make_unique<GlobalThread>(); }
 
-  void TearDown() override { global_thread_.reset(); }
+  void TearDown() override {
+    global_thread_.reset();
+    GlobalThread::ResetGlobalsForTesting();
+  }
 
   std::unique_ptr<GlobalThread> global_thread_;
 };
@@ -53,6 +56,24 @@ TEST_F(GlobalThreadTest, GetTaskRunner) {
 
   EXPECT_EQ(ui_runner, GlobalThread::GetTaskRunnerForThread(GlobalThread::UI));
   EXPECT_EQ(io_runner, GlobalThread::GetTaskRunnerForThread(GlobalThread::IO));
+}
+
+TEST_F(GlobalThreadTest, KeepsTaskRunnersAfterShutdown) {
+  scoped_refptr<base::SingleThreadTaskRunner> ui_runner =
+      GlobalThread::GetUIThreadTaskRunner();
+  scoped_refptr<base::SingleThreadTaskRunner> io_runner =
+      GlobalThread::GetIOThreadTaskRunner();
+
+  global_thread_.reset();
+
+  EXPECT_FALSE(GlobalThread::IsThreadInitialized(GlobalThread::UI));
+  EXPECT_FALSE(GlobalThread::IsThreadInitialized(GlobalThread::IO));
+  EXPECT_EQ(ui_runner, GlobalThread::GetUIThreadTaskRunner());
+  EXPECT_EQ(io_runner, GlobalThread::GetIOThreadTaskRunner());
+  EXPECT_FALSE(GlobalThread::GetUIThreadTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce([]() {})));
+  EXPECT_FALSE(GlobalThread::GetIOThreadTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce([]() {})));
 }
 
 TEST_F(GlobalThreadTest, PostTaskToIOThread) {
