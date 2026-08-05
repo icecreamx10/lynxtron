@@ -67,6 +67,7 @@ export default defineConfig({
       {
         alignMouseEventWithW3C: true,
         enableCSSInheritance: true,
+        enableCSSInlineVariables: true,
       },
       {
         configKeys: [...configKeys, 'alignMouseEventWithW3C'],
