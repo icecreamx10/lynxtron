@@ -1159,6 +1159,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@lynx-js/lynxtron-mobile@workspace:packages/lynxtron-mobile":
+  version: 0.0.0-use.local
+  resolution: "@lynx-js/lynxtron-mobile@workspace:packages/lynxtron-mobile"
+  dependencies:
+    typescript: "npm:^5.6.2"
+  peerDependencies:
+    "@nativescript/core": ">=8.0.0"
+  peerDependenciesMeta:
+    "@nativescript/core":
+      optional: true
+  languageName: unknown
+  linkType: soft
+
 "@lynx-js/lynxtron@workspace:*, @lynx-js/lynxtron@workspace:packages/lynxtron":
   version: 0.0.0-use.local
   resolution: "@lynx-js/lynxtron@workspace:packages/lynxtron"

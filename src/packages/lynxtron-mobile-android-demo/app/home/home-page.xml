@@ -1,0 +1,31 @@
+<Page navigatingTo="onNavigatingTo" xmlns="http://schemas.nativescript.org/tns.xsd">
+  <ActionBar title="Lynxtron Mobile" />
+
+  <ScrollView>
+    <StackLayout paddingBottom="28">
+      <StackLayout class="hero">
+        <Label class="eyebrow" text="ANDROID-FIRST MVP" />
+        <Label class="title" text="Lynxtron Mobile" textWrap="true" />
+        <Label
+          class="subtitle"
+          text="NativeScript Android host running on emulator-5554"
+          textWrap="true"
+        />
+      </StackLayout>
+
+      <StackLayout class="card">
+        <Label class="card-title" text="Runtime status" />
+        <Label class="status" text="{{ status }}" textWrap="true" />
+        <Label class="row" text="✓ NativeScript Android Runtime" />
+        <Label class="row" text="✓ LynxWindow P0 JS contract" />
+        <Label class="row" text="✓ Template data + lifecycle events" />
+        <Label class="row pending" text="◌ Native LynxView adapter pending" />
+      </StackLayout>
+
+      <StackLayout class="card">
+        <Label class="card-title" text="P0 execution log" />
+        <Label class="log" text="{{ log }}" textWrap="true" />
+      </StackLayout>
+    </StackLayout>
+  </ScrollView>
+</Page>

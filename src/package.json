@@ -41,6 +41,7 @@
   "workspaces": [
     "packages/default_app/app",
     "packages/lynxtron",
+    "packages/lynxtron-mobile",
     "packages/lynxtron-builder",
     "packages/lynxtron-shell-demo",
     "packages/lynxtron-dev-plugins",
