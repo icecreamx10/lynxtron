@@ -4,8 +4,9 @@
   "private": true,
   "main": "app/app.js",
   "scripts": {
-    "android": "ns run android",
-    "build:android": "ns build android"
+    "prepare:lynx": "bash scripts/build-lynx-source-android.sh",
+    "android": "npm run prepare:lynx && ns run android",
+    "build:android": "npm run prepare:lynx && ns build android"
   },
   "dependencies": {
     "@lynx-js/lynxtron-mobile": "file:../lynxtron-mobile",

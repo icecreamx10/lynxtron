@@ -2,7 +2,7 @@
 
 > 目标：只复刻 Lynxtron 的 Lynx 宿主能力，不复刻完整 Electron API，也不重复封装 NativeScript 已有能力。
 
-P0 JS MVP 已落在 [`src/packages/lynxtron-mobile`](../src/packages/lynxtron-mobile/README.md)。当前包含可执行、可测试的 JS contract 和 native adapter ABI；Android/iOS Lynx SDK 与 NativeScript Worker isolate 的原生接入尚待实现。
+P0 JS MVP 已落在 [`src/packages/lynxtron-mobile`](../src/packages/lynxtron-mobile/README.md)。当前包含可执行、可测试的 JS contract 和 native adapter ABI；Android demo 已从 `DEPS.lynx` 锁定的 Lynx 源码构建 AAR，并通过 NativeScript Java 互操作接入真实 `LynxView`。iOS 与 NativeScript Worker isolate 的原生接入尚待实现。
 
 ## 1. 范围原则
 
@@ -205,7 +205,7 @@ interface LynxWindowEventMap {
 
 ### 3.2 内部 `LynxView` 与公共 API 边界
 
-Android/iOS Lynx SDK 的 native `LynxView` 是 `LynxWindow` 的内部渲染对象，不作为 Mobile P0 的第二套 JS API：
+Android/iOS 的 native `LynxView` 是 `LynxWindow` 的内部渲染对象，不作为 Mobile P0 的第二套 JS API。Android MVP 直接使用 Lynxtron 锁定的 Lynx 源码构建产物，不依赖已发布的 Lynx Android SDK：
 
 ```text
 JS LynxWindow（唯一公共页面对象）

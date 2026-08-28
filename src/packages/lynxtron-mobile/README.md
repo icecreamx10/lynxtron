@@ -7,6 +7,11 @@ adapter ABI. It does not bundle the Android/iOS Lynx SDK or a NativeScript V8
 runtime. A platform plugin must install `NativeLynxtronMobileAdapter` before a
 `LynxWindow` is created.
 
+The sibling [`lynxtron-mobile-android-demo`](../lynxtron-mobile-android-demo/README.md)
+installs a real adapter backed by a native `LynxView`. Its Android AARs are
+built directly from the Lynx revision pinned by Lynxtron rather than from a
+released Lynx SDK.
+
 Run the complete P0 lifecycle against the executable mock host:
 
 ```bash

@@ -1,10 +1,11 @@
 # Lynxtron Mobile：PC 模型的移动端对偶设计
 
-> 状态：架构草案；P0 JS MVP 已建立
+> 状态：架构草案；P0 JS MVP 与 Android 源码构建 demo 已建立
 > 核心结论：Lynxtron Mobile 是建立在 NativeScript 上的一组 Lynx 插件，而不是另一套移动端 Shell。它保留多 JS Realm 模型并使用 Lynx 原生端渲染；BTS 在 Lynx Runtime 中挂载 NativeScript preload context，MTS 增加独立 preload。preload 与 Lynx Realm 之间不引入应用级 RPC。
 
 具体 JS API 复刻范围见 [`mobile-js-api-scope.md`](./mobile-js-api-scope.md)。
 P0 MVP 包见 [`src/packages/lynxtron-mobile`](../src/packages/lynxtron-mobile/README.md)。
+Android demo 见 [`src/packages/lynxtron-mobile-android-demo`](../src/packages/lynxtron-mobile-android-demo/README.md)：它从 `DEPS.lynx` 锁定的源码直接构建并嵌入 `LynxView`，不消费已发布的 Lynx Android SDK。
 
 ## 1. 设计目标
 
@@ -56,7 +57,7 @@ Lynxtron Mobile 不是把桌面程序套进 WebView，也不是把桌面的 Node
 | Node/V8 Main Runtime           | NativeScript/V8 应用 Runtime + Lynxtron 插件 | 运行入口脚本、拥有 `app`、创建和管理 `LynxWindow` | 应用生命周期和原生能力沿用 NativeScript                                   |
 | Native Window                  | Native Page/Scene Container                  | 承载一个 `LynxView`，管理显示和生命周期           | Android 可落到 Activity/Fragment/View；iOS 可落到 UIViewController/UIView |
 | `LynxWindow`                   | `LynxWindow`                                 | JS 层统一的 Lynx 页面容器和生命周期对象           | Mobile 不等价于 OS 浮动窗口，部分桌面属性无意义                           |
-| LynxView                       | LynxView                                     | 直接加载 bundle、更新数据、执行 Lynx 原生渲染     | 使用 Android/iOS Lynx SDK                                                 |
+| LynxView                       | LynxView                                     | 直接加载 bundle、更新数据、执行 Lynx 原生渲染     | Android 从锁定源码构建；iOS 后续采用对应源码构建链路                      |
 | BTS Node context               | BTS NativeScript context                     | 同 isolate 独立 Realm、执行 preload、显式导出能力 | 模块加载器和 built-ins 来自 NativeScript provider                         |
 | MTS Runtime                    | MTS Runtime + MTS preload                    | 执行主线程脚本和帧敏感逻辑                        | 新增 UI 能力绑定入口                                                      |
 | `NativeModules.nodejs.exposed` | 建议为 `NativeModules.lynxtron.exposed`      | Lynx BTS 获取 preload 导出                        | PC 可保留 `nodejs` 兼容别名；实际 API 集合允许不同                        |
@@ -89,7 +90,7 @@ Android Application / iOS Application
 
 必须坚持两点：
 
-- `LynxView` 直接接入移动端 Lynx SDK 的 native view 和渲染管线，不增加 WebView 层。
+- `LynxView` 直接接入移动端 Lynx 的 native view 和渲染管线，不增加 WebView 层；产物从 Lynxtron 锁定的 Lynx 源码构建。
 - Main Runtime、MTS Realm、BTS Lynx Realm、BTS preload Realm 是不同的 JS 执行域。即使其中两个执行域位于同一条原生线程，也不能假设它们共享 `globalThis`、对象身份或模块单例状态。
 
 ### 4.1 NativeScript 插件分层

@@ -18,8 +18,13 @@
         <Label class="status" text="{{ status }}" textWrap="true" />
         <Label class="row" text="✓ NativeScript Android Runtime" />
         <Label class="row" text="✓ LynxWindow P0 JS contract" />
-        <Label class="row" text="✓ Template data + lifecycle events" />
-        <Label class="row pending" text="◌ Native LynxView adapter pending" />
+        <Label class="row" text="✓ Lynx source pinned by DEPS.lynx" />
+        <Label class="row" text="✓ Native LynxView + lifecycle adapter" />
+      </StackLayout>
+
+      <StackLayout class="lynx-card">
+        <Label class="lynx-card-title" text="Real native LynxView" />
+        <Placeholder height="320" creatingView="createLynxView" />
       </StackLayout>
 
       <StackLayout class="card">

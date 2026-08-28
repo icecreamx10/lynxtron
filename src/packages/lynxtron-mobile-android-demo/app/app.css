@@ -65,6 +65,20 @@ ActionBar {
   color: #ffd479;
 }
 
+.lynx-card {
+  margin: 8 20;
+  border-radius: 16;
+  background-color: #ffffff;
+}
+
+.lynx-card-title {
+  padding: 14 18;
+  background-color: #e8edff;
+  color: #17213d;
+  font-size: 15;
+  font-weight: 700;
+}
+
 .log {
   margin-top: 12;
   padding: 14;
