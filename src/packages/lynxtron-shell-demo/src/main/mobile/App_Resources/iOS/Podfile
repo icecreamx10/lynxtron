@@ -1,0 +1,14 @@
+lynxtron_repo_root = ENV['LYNXTRON_REPO_ROOT'] || File.expand_path('../../../../../../../..', __dir__)
+lynx_source_root = ENV['LYNX_SOURCE_ROOT'] || File.join(lynxtron_repo_root, 'lynx')
+primjs_pod_root = File.expand_path('../../App_Resources/iOS', __dir__)
+
+unless File.file?(File.join(lynx_source_root, 'Lynx.podspec'))
+  raise "Missing generated Lynx iOS podspecs under #{lynx_source_root}. " \
+        'Run `npm run build:mobile-runtime:ios` first.'
+end
+
+pod 'PrimJS', :podspec => File.join(primjs_pod_root, 'PrimJS.podspec')
+pod 'Lynx', :path => lynx_source_root, :subspecs => ['Framework']
+pod 'LynxBase', :path => lynx_source_root, :subspecs => ['Framework']
+pod 'LynxServiceAPI', :path => lynx_source_root, :subspecs => ['Core']
+pod 'LynxService', :path => lynx_source_root, :subspecs => ['Image']

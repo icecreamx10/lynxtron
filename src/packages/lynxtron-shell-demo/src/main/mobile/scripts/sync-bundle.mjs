@@ -13,17 +13,29 @@ const sourceBundle = path.join(
   shellDemoRoot,
   'output/bundle/lynx/main.lynx.bundle'
 );
-const assetDirectory = path.join(
+const androidAssetDirectory = path.join(
   mobileRoot,
   'App_Resources/Android/src/main/assets'
 );
-const targetBundle = path.join(assetDirectory, 'main.lynx.bundle');
+const iosAssetDirectory = path.join(mobileRoot, 'App_Resources/iOS');
+const targetBundles = [
+  path.join(androidAssetDirectory, 'main.lynx.bundle'),
+  path.join(iosAssetDirectory, 'main.lynx.bundle'),
+];
 
 const sourceInfo = await stat(sourceBundle);
 if (!sourceInfo.isFile() || sourceInfo.size === 0) {
   throw new Error(`Invalid mobile Lynx bundle: ${sourceBundle}`);
 }
 
-await mkdir(assetDirectory, { recursive: true });
-await copyFile(sourceBundle, targetBundle);
-console.log(`Prepared shell mobile bundle (${sourceInfo.size} bytes).`);
+await Promise.all(
+  [androidAssetDirectory, iosAssetDirectory].map((directory) =>
+    mkdir(directory, { recursive: true })
+  )
+);
+await Promise.all(
+  targetBundles.map((targetBundle) => copyFile(sourceBundle, targetBundle))
+);
+console.log(
+  `Prepared Android and iOS shell bundles (${sourceInfo.size} bytes each).`
+);

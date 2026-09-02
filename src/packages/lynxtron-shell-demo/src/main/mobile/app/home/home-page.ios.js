@@ -7,6 +7,7 @@ import { LynxWindow, installNativeAdapter } from '@lynx-js/lynxtron-mobile';
 
 const state = {
   callbacks: null,
+  nativeHost: null,
   nativeListener: null,
   nativeView: null,
   pageReady: false,
@@ -18,29 +19,32 @@ let adapterInstalled = false;
 let nextWindowId = 1;
 
 function log(message) {
-  console.log(`[LYNXTRON_SHELL_MOBILE] ${message}`);
-}
-
-function host() {
-  return org.lynxtron.mobile.demo.LynxtronLynxHost;
+  console.log(`[LYNXTRON_SHELL_MOBILE_IOS] ${message}`);
 }
 
 function normalizeAssetPath(path) {
   return path.replace(/^app:\/\//, '').replace(/^asset:\/\/\//, '');
 }
 
-function toJavaBytes(bytes) {
-  const result = Array.create('byte', bytes.byteLength);
-  for (let index = 0; index < bytes.byteLength; index += 1) {
-    const value = bytes[index];
-    result[index] = value > 127 ? value - 256 : value;
+function parseParams(paramsJSON) {
+  try {
+    return JSON.parse(paramsJSON);
+  } catch {
+    return {};
   }
-  return result;
 }
 
-function createAndroidAdapter() {
+function toNSData(bytes) {
+  const data = NSData.dataWithData(bytes.buffer);
+  if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+    return data;
+  }
+  return data.subdataWithRange(NSMakeRange(bytes.byteOffset, bytes.byteLength));
+}
+
+function createIOSAdapter() {
   return {
-    platform: 'android',
+    platform: 'ios',
     createTemplateBundle(bytes) {
       const copy = new Uint8Array(bytes);
       return {
@@ -50,12 +54,12 @@ function createAndroidAdapter() {
       };
     },
     createWindow(options, callbacks) {
-      if (!state.nativeView) {
-        throw new Error('Native LynxView has not been attached');
+      if (!state.nativeHost || !state.nativeView) {
+        throw new Error('Native iOS LynxView has not been attached');
       }
 
       const id = nextWindowId++;
-      const nativeView = state.nativeView;
+      const nativeHost = state.nativeHost;
       let destroyed = false;
       state.callbacks = callbacks;
       log(`native.createWindow #${id} (${options.mobile.presentation})`);
@@ -72,96 +76,77 @@ function createAndroidAdapter() {
         id,
         show() {
           alive();
-          host().show(nativeView);
+          nativeHost.show();
           callbacks.emit('show');
           callbacks.emit('foreground');
         },
         hide() {
           alive();
-          host().hide(nativeView);
+          nativeHost.hide();
           callbacks.emit('background');
           callbacks.emit('hide');
         },
         close() {
           alive();
-          host().destroy(nativeView);
+          nativeHost.destroy();
           destroyed = true;
           callbacks.emit('closed');
         },
         destroy() {
           if (!destroyed) {
-            host().destroy(nativeView);
+            nativeHost.destroy();
             destroyed = true;
           }
         },
         loadFile(path, loadOptions) {
           alive();
-          host().renderAsset(
-            nativeView,
+          return nativeHost.renderAssetDataJSON(
             normalizeAssetPath(path),
             renderData(loadOptions)
           );
-          return true;
         },
         loadURL(url, loadOptions) {
           alive();
           if (!url.startsWith('asset:///') && !url.startsWith('app://')) {
             return false;
           }
-          host().renderAsset(
-            nativeView,
+          return nativeHost.renderAssetDataJSON(
             normalizeAssetPath(url),
             renderData(loadOptions)
           );
-          return true;
         },
         loadBundle(bundle, loadOptions) {
           alive();
           if (!bundle.isValid()) {
             return false;
           }
-          host().renderBytes(
-            nativeView,
-            toJavaBytes(bundle.bytes),
+          return nativeHost.renderBytesDataJSONUrl(
+            toNSData(bundle.bytes),
             renderData(loadOptions),
             'app://memory.lynx.bundle'
           );
-          return true;
         },
         updateMetaData(meta) {
           alive();
           if (meta.updateData) {
-            host().updateData(nativeView, JSON.stringify(meta.updateData));
+            nativeHost.updateDataJSON(JSON.stringify(meta.updateData));
           }
           if (meta.globalProps) {
-            host().updateGlobalProps(
-              nativeView,
-              JSON.stringify(meta.globalProps)
-            );
+            nativeHost.updateGlobalPropsJSON(JSON.stringify(meta.globalProps));
           }
           return true;
         },
         setGlobalProps(props) {
           alive();
-          host().updateGlobalProps(nativeView, JSON.stringify(props));
-          return true;
+          return nativeHost.updateGlobalPropsJSON(JSON.stringify(props));
         },
         sendGlobalEvent(name, args) {
           alive();
-          host().sendGlobalEvent(nativeView, name, JSON.stringify(args));
-          return true;
+          return nativeHost.sendGlobalEventArgsJSON(name, JSON.stringify(args));
         },
       };
     },
   };
-}
-
-function parseParams(paramsJson) {
-  try {
-    return JSON.parse(paramsJson);
-  } catch {
-    return {};
-  }
 }
 
 function startShellWindow() {
@@ -199,48 +184,57 @@ function startShellWindow() {
 
   window.show();
   window.loadFile('app://main.lynx.bundle', {
-    data: { platform: 'mobile', host: 'NativeScript' },
+    data: { platform: 'mobile', host: 'NativeScript iOS' },
   });
 }
 
-export function createLynxView(args) {
-  state.nativeListener = new org.lynxtron.mobile.demo.LynxtronLynxHost.Listener(
-    {
-      onPageStart(url) {
-        log(`native.onPageStart ${url}`);
-      },
-      onRuntimeReady() {
-        log('native.onRuntimeReady');
-      },
-      onLoadSuccess() {
-        log('native.onLoadSuccess');
-        state.callbacks?.emit('ready-to-show');
-      },
-      onFirstScreen() {
-        log('native.onFirstScreen');
-        state.callbacks?.emit('on-first-screen');
-      },
-      onError(code, message) {
-        log(`native.onError ${code}: ${message}`);
-        state.callbacks?.emit('--lynx-error', code, message);
-      },
-      onBridgeCall(method, paramsJson, callback) {
-        const reply = (result) => {
-          callback.invoke(result ?? null);
-          return true;
-        };
-        state.callbacks?.invoke(method, parseParams(paramsJson), reply);
-      },
-      onBridgeSend(method, paramsJson) {
-        state.callbacks?.message(method, parseParams(paramsJson));
-      },
-      onDestroyed() {
-        log('native.onDestroyed');
-      },
-    }
-  );
+const IOSListener = NSObject.extend(
+  {
+    onPageStart(url) {
+      log(`native.onPageStart ${url}`);
+    },
+    onRuntimeReady() {
+      log('native.onRuntimeReady');
+    },
+    onLoadSuccess() {
+      log('native.onLoadSuccess');
+      state.callbacks?.emit('ready-to-show');
+    },
+    onFirstScreen() {
+      log('native.onFirstScreen');
+      state.callbacks?.emit('on-first-screen');
+    },
+    onErrorMessage(code, message) {
+      log(`native.onError ${code}: ${message}`);
+      state.callbacks?.emit('--lynx-error', code, message);
+    },
+    onBridgeCallParamsJSONCallback(method, paramsJSON, callback) {
+      const reply = (result) => {
+        callback(result ?? null);
+        return true;
+      };
+      state.callbacks?.invoke(method, parseParams(paramsJSON), reply);
+    },
+    onBridgeSendParamsJSON(method, paramsJSON) {
+      state.callbacks?.message(method, parseParams(paramsJSON));
+    },
+    onDestroyed() {
+      log('native.onDestroyed');
+    },
+  },
+  {
+    name: 'LynxtronShellIOSListener',
+    protocols: [LynxtronIOSHostListener],
+  }
+);
 
-  state.nativeView = host().create(args.context, state.nativeListener);
+export function createLynxView(args) {
+  state.nativeListener = IOSListener.new();
+  state.nativeHost = LynxtronIOSHost.alloc().initWithListener(
+    state.nativeListener
+  );
+  const screenBounds = UIScreen.mainScreen.bounds;
+  state.nativeView = state.nativeHost.createViewWithFrame(screenBounds);
   args.view = state.nativeView;
   startShellWindow();
 }
@@ -251,7 +245,7 @@ export function onNavigatingTo(args) {
   state.starting = false;
 
   if (!adapterInstalled) {
-    installNativeAdapter(createAndroidAdapter());
+    installNativeAdapter(createIOSAdapter());
     adapterInstalled = true;
   }
 
@@ -259,6 +253,8 @@ export function onNavigatingTo(args) {
   page.on('unloaded', () => {
     state.window?.destroy();
     state.callbacks = null;
+    state.nativeHost = null;
+    state.nativeListener = null;
     state.nativeView = null;
     state.pageReady = false;
     state.starting = false;

@@ -52,7 +52,13 @@ npm run install:mobile
   ```bash
   export JAVA_HOME=/path/to/jdk-21
   export ANDROID_HOME=/path/to/android-sdk
-  npm run start:mobile
+  npm run start:mobile:android
+  ```
+
+- **Mobile 端（iOS 模拟器，仅 macOS）**
+
+  ```bash
+  npm run start:mobile:ios
   ```
 
 ### 构建与启动
@@ -83,11 +89,19 @@ npm run install:mobile
 - **构建 Mobile Android**
 
   ```bash
-  npm run build:mobile
+  npm run build:mobile:android
   ```
 
-  前端命令只构建 Lynx bundle 和 Android 应用，并复用本地已经构建好的
-  Mobile Runtime；这与桌面前端复用 Lynxtron Runtime、而不重新编译它一致。
+- **构建 Mobile iOS**
+
+  ```bash
+  npm run build:mobile:ios
+  ```
+
+  `build:mobile` 和 `start:mobile` 继续作为 Android 的兼容别名。两个宿主
+  复用同一份 Lynx bundle 和 `@lynx-js/lynxtron-mobile` API。Android 链接
+  本地构建的 AAR；iOS 使用生成的 CocoaPods spec，源码路径直接指向锁定的
+  Lynx checkout，不依赖已发布的 Lynx Mobile SDK。
 
 - **从 Lynx 源码构建 Mobile Runtime**
 
@@ -96,13 +110,19 @@ npm run install:mobile
   ```bash
   export LYNX_JAVA_HOME=/path/to/jdk-11
   export ANDROID_HOME=/path/to/android-sdk
-  npm run build:mobile-runtime
+  npm run build:mobile-runtime:android
   ```
 
-  Runtime 命令直接从 `src/dependencies/DEPS.lynx` 锁定的源码构建 Lynx
-  Android AAR，不依赖已发布的 Lynx Android SDK。当前 P0 暂时把
-  `nodejs.echo` 映射为 Android 原生模块；preload 接入后再替换为同 isolate
-  的 NativeScript BTS Worker。
+  macOS 上使用 Lynx 官方 GN generator 准备本地 iOS 源码 Pods：
+
+  ```bash
+  npm run build:mobile-runtime:ios
+  ```
+
+  Runtime 命令都使用 `src/dependencies/DEPS.lynx` 锁定的源码；iOS 源码
+  随后进入 Xcode 的常规增量构建图。当前 P0 在两个平台都暂时把
+  `nodejs.echo` 映射为原生模块；preload 接入后再替换为同 isolate 的
+  NativeScript BTS Worker。
 
 ### 应用打包
 

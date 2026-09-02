@@ -5,7 +5,9 @@
   "main": "app/app.js",
   "scripts": {
     "android": "ns run android",
-    "build:android": "ns build android"
+    "build:android": "ns build android",
+    "ios": "ns run ios",
+    "build:ios": "ns build ios"
   },
   "dependencies": {
     "@lynx-js/lynxtron-mobile": "file:../../../../lynxtron-mobile",
@@ -14,6 +16,7 @@
   },
   "devDependencies": {
     "@nativescript/android": "~9.0.5",
+    "@nativescript/ios": "~9.0.3",
     "@nativescript/webpack": "~5.0.38",
     "nativescript": "9.0.7"
   }

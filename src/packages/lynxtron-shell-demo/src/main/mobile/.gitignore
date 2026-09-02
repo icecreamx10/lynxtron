@@ -1,5 +1,6 @@
 /node_modules/
 /platforms/
 /App_Resources/Android/src/main/assets/main.lynx.bundle
+/App_Resources/iOS/main.lynx.bundle
 /hooks/
 /.nsbuildinfo

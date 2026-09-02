@@ -1,0 +1,4 @@
+module LynxtronIOSHost {
+  header "LynxtronIOSHost.h"
+  export *
+}

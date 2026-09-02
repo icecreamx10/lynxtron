@@ -50,7 +50,13 @@ npm run install:mobile
   ```bash
   export JAVA_HOME=/path/to/jdk-21
   export ANDROID_HOME=/path/to/android-sdk
-  npm run start:mobile
+  npm run start:mobile:android
+  ```
+
+- **Mobile (iOS simulator, macOS only)**
+
+  ```bash
+  npm run start:mobile:ios
   ```
 
 ### Build & Start
@@ -81,12 +87,19 @@ npm run install:mobile
 - **Build Mobile Android**
 
   ```bash
-  npm run build:mobile
+  npm run build:mobile:android
   ```
 
-  The frontend commands only build the Lynx bundle and Android application. They
-  reuse the locally built mobile runtime, just as the desktop frontend reuses the
-  Lynxtron runtime instead of rebuilding it.
+- **Build Mobile iOS**
+
+  ```bash
+  npm run build:mobile:ios
+  ```
+
+  `build:mobile` and `start:mobile` remain aliases for Android. Both hosts use the
+  same Lynx bundle and `@lynx-js/lynxtron-mobile` API. Android links locally built
+  AARs; iOS consumes generated CocoaPods specifications whose source paths point
+  directly at the pinned Lynx checkout. No published Lynx mobile SDK is used.
 
 - **Build Mobile Runtime from Lynx Source**
 
@@ -95,12 +108,18 @@ npm run install:mobile
   ```bash
   export LYNX_JAVA_HOME=/path/to/jdk-11
   export ANDROID_HOME=/path/to/android-sdk
-  npm run build:mobile-runtime
+  npm run build:mobile-runtime:android
   ```
 
-  The runtime command builds Lynx Android AARs directly from the revision pinned
-  by `src/dependencies/DEPS.lynx`; it does not consume a published Lynx Android
-  SDK. The current P0 maps `nodejs.echo` to an Android native module. It will move
+  On macOS, prepare the local iOS source pods with Lynx's official GN generator:
+
+  ```bash
+  npm run build:mobile-runtime:ios
+  ```
+
+  The runtime commands use the revision pinned by `src/dependencies/DEPS.lynx`.
+  The iOS sources then participate in Xcode's normal incremental build graph. The
+  current P0 maps `nodejs.echo` to a native module on both platforms. It will move
   to the same-isolate NativeScript BTS Worker when preload support lands.
 
 ### Application Packaging
