@@ -4,8 +4,12 @@ const { validateConfiguration } = require('app-builder-lib/out/util/config/confi
 
 const runtimeArtifacts = require('../../lynxtron/runtime-artifacts.cjs');
 const {
+  applyArchitectureToConfig,
+  isUniversalFromConfig,
   prepareRuntimeConfig,
   prepareUniversalPackaging,
+  resolveBuildPlan,
+  resolveConfiguredArchitectures,
 } = require('../runtime-config.js');
 
 function prepare({ config = {}, args = [], env = {}, arch } = {}) {
@@ -73,6 +77,94 @@ test('cross-platform targets select artifacts for the requested platform', () =>
   assert.equal(
     prepare({ args: ['--mac', '--arm64'] }).config.electronDownload.customFilename,
     'lynxtron-v1.2.3-darwin-arm64.zip'
+  );
+});
+
+test('macOS yml architecture selects the matching runtime artifact', () => {
+  for (const [mac, expectedArch] of [
+    [{ defaultArch: 'x64', target: 'dmg' }, 'x64'],
+    [{ target: { target: 'dmg', arch: 'x64' } }, 'x64'],
+    [{ target: [{ target: 'dmg', arch: ['arm64'] }] }, 'arm64'],
+  ]) {
+    const result = prepare({ config: { mac } });
+    assert.equal(
+      result.config.electronDownload.customFilename,
+      `lynxtron-v1.2.3-darwin-${expectedArch}.zip`
+    );
+  }
+});
+
+test('CLI architecture overrides yml architecture', () => {
+  const config = {
+    mac: { target: [{ target: 'dmg', arch: ['universal'] }] },
+  };
+  const result = prepare({ config, args: ['--mac', '--arm64'] });
+  assert.equal(
+    result.config.electronDownload.customFilename,
+    'lynxtron-v1.2.3-darwin-arm64.zip'
+  );
+  applyArchitectureToConfig(result.config, result.platform, result.arch);
+  assert.equal(result.config.mac.target[0].arch, 'arm64');
+});
+
+test('configured architecture arrays are detected and filtered per build', () => {
+  const config = {
+    mac: {
+      defaultArch: 'arm64',
+      target: [
+        { target: 'dmg', arch: ['x64', 'arm64'] },
+        { target: 'zip', arch: 'arm64' },
+      ],
+    },
+  };
+  assert.deepEqual(resolveConfiguredArchitectures(config, 'darwin'), ['x64', 'arm64']);
+
+  const x64Config = structuredClone(config);
+  applyArchitectureToConfig(x64Config, 'darwin', 'x64', {
+    filterTargets: true,
+  });
+  assert.deepEqual(x64Config.mac.target, [{ target: 'dmg', arch: 'x64' }]);
+
+  const arm64Config = structuredClone(config);
+  applyArchitectureToConfig(arm64Config, 'darwin', 'arm64', {
+    filterTargets: true,
+  });
+  assert.deepEqual(arm64Config.mac.target, [
+    { target: 'dmg', arch: 'arm64' },
+    { target: 'zip', arch: 'arm64' },
+  ]);
+});
+
+test('universal yml architecture accepts string and array forms', () => {
+  for (const arch of ['universal', ['universal']]) {
+    const config = { mac: { target: [{ target: 'dmg', arch }] } };
+    assert.equal(isUniversalFromConfig(config), true);
+
+    for (const slice of ['x64', 'arm64']) {
+      const sliceConfig = structuredClone(config);
+      applyArchitectureToConfig(sliceConfig, 'darwin', slice, {
+        filterTargets: true,
+      });
+      assert.equal(sliceConfig.mac.target[0].arch, slice);
+    }
+  }
+});
+
+test('CLI architecture overrides a universal yml build plan', () => {
+  const config = {
+    mac: { target: [{ target: 'dmg', arch: ['universal'] }] },
+  };
+  assert.deepEqual(resolveBuildPlan(['--mac'], config, 'darwin'), {
+    universal: true,
+    architectures: ['x64', 'arm64'],
+  });
+  assert.deepEqual(resolveBuildPlan(['--mac', '--x64'], config, 'darwin'), {
+    universal: false,
+    architectures: ['x64'],
+  });
+  assert.deepEqual(
+    resolveBuildPlan(['--win'], { ...config, win: { defaultArch: 'x64' } }, 'win32'),
+    { universal: false, architectures: ['x64'] }
   );
 });
 
