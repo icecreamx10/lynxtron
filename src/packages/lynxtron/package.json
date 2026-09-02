@@ -15,14 +15,16 @@
   },
   "scripts": {
     "postinstall": "node install.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test \"*.test.js\""
   },
   "dependencies": {
-    "extract-zip": "2.0.1",
-    "node-fetch": "3.3.2"
+    "node-fetch": "3.3.2",
+    "proper-lockfile": "4.1.2",
+    "zip-lib": "1.4.0"
   },
   "devDependencies": {
-    "@types/node": "^25.0.3"
+    "@types/node": "^25.0.3",
+    "yazl": "3.3.1"
   },
   "author": "",
   "license": "ISC",
@@ -36,6 +38,9 @@
     "fuses.js",
     "fuses-cli.js",
     "install.js",
+    "install-policy.js",
+    "runtime-artifacts.cjs",
+    "runtime-manager.js",
     "native-paths.cjs",
     "lynx.js",
     "lynxtron.js",
@@ -57,6 +62,7 @@
     },
     "./fuses": "./fuses.js",
     "./native-paths": "./native-paths.cjs",
+    "./runtime-artifacts": "./runtime-artifacts.cjs",
     "./package.json": "./package.json",
     "./context-bridge": {
       "types": "./apis/api/context-bridge.d.ts",
@@ -70,6 +76,6 @@
     "./web-worker": "./web-worker.js"
   },
   "engines": {
-    "node": ">=16"
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
   }
 }

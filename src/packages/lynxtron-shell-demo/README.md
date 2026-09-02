@@ -19,7 +19,7 @@
 
 ## Prerequisites
 
-- NodeJS >= 22.18.0
+- Node.js 22 (>= 22.18.0), Node.js 24, or Node.js 26
 - [LynxDevTool](https://github.com/lynx-family/lynx-devtool/releases/) >= 0.1.1
 
 ## Usage Guide

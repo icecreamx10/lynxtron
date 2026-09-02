@@ -3,13 +3,13 @@
 A minimal npm package that distributes the Lynxtron runtime and exposes TypeScript type definitions with a simple CLI entry.
 
 ## Installation & Usage
-- Requires Node.js `>=16`
+- Requires Node.js `^22.18.0 || ^24.0.0 || ^26.0.0`
 - Install:
 
 ```bash
-npm install lynxtron
+npm install @lynx-js/lynxtron
 # or
-pnpm add lynxtron
+pnpm add @lynx-js/lynxtron
 ```
 
 - CLI:
@@ -17,6 +17,14 @@ pnpm add lynxtron
 ```bash
 npx lynxtron <args>
 ```
+
+Package installation always downloads the DevTool-enabled runtime, and the CLI runs it by default. Release and DevTool binaries use the same npm package version. To explicitly run the production runtime on demand:
+
+```bash
+npx lynxtron --lynxtron-runtime=release <args>
+```
+
+`LYNXTRON_RUNTIME_VARIANT=release` provides the same CLI override; it does not change what npm postinstall downloads. Missing selected runtimes are downloaded on demand and stored separately under `dist/release` or `dist/devtool`. `LYNXTRON_BINARY_URL` can point installation or lazy download at a custom runtime archive.
 
 - Fuse CLI:
 
@@ -51,8 +59,9 @@ console.log(await getCurrentFuses('C:\\path\\to\\lynxtron'));
 - `package.json` — ESM config (`type: "module"`), `bin` entry, `types` entry, `postinstall`, dependencies, publish `files`.
 - `fuses.js` — Reads and flips Lynxtron fuse bytes embedded in the packaged runtime.
 - `fuses-cli.js` — CLI wrapper for reading and writing fuse values.
-- `install.js` — Postinstall script to download and extract the runtime to `dist/<platform>/<arch>/`; sets executable permission on macOS.
-- `lynxtron_bin.js` — Resolves the platform-specific executable path under `dist/<platform>/<arch>/<exe>`.
+- `install.js` — Postinstall script that downloads the DevTool runtime by default.
+- `runtime-manager.js` — Downloads and isolates `release` and `devtool` runtimes under `dist/<variant>/`.
+- `lynxtron_bin.js` — Resolves the default DevTool executable path.
 - `utils/env-config.js` — Resolves platform, arch and version; builds the executable filename for each OS.
 - `utils/download.js` — Download helper using `node-fetch` with timeout and single-write to disk.
 - `scripts/scan-cjk-comments.js` — Dev utility to scan Chinese comments outside `front` (not published).

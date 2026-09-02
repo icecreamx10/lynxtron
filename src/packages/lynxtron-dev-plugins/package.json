@@ -41,6 +41,9 @@
   "bin": {
     "dev-ready-rspeedy": "bin/cli-rspeedy.js"
   },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
   "peerDependencies": {
     "@rsbuild/core": "^2.1.5"
   },

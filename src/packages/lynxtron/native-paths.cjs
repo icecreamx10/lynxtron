@@ -1,4 +1,5 @@
 const path = require('node:path');
+const { normalizeRuntimeVariant } = require('./runtime-artifacts.cjs');
 
 const packageRoot = __dirname;
 const distRoot = path.join(packageRoot, 'dist');
@@ -17,21 +18,31 @@ function platformExecutableName() {
   );
 }
 
-const executablePath = path.join(distRoot, platformExecutableName());
+function getRuntimeRoot(variant = 'devtool') {
+  return path.join(distRoot, normalizeRuntimeVariant(variant));
+}
+
+function getExecutablePath(variant = 'devtool') {
+  return path.join(getRuntimeRoot(variant), platformExecutableName());
+}
+
+const executablePath = getExecutablePath();
 
 const dllPath =
   process.platform === 'win32'
-    ? path.join(distRoot, 'lynxtron.dll')
+    ? path.join(getRuntimeRoot(), 'lynxtron.dll')
     : undefined;
 
 const importLibraryPath =
   process.platform === 'win32'
-    ? path.join(distRoot, 'lynxtron.dll.lib')
+    ? path.join(getRuntimeRoot(), 'lynxtron.dll.lib')
     : undefined;
 
 module.exports = {
   packageRoot,
   distRoot,
+  getRuntimeRoot,
+  getExecutablePath,
   executablePath,
   dllPath,
   importLibraryPath,

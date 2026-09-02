@@ -13,6 +13,9 @@
   },
   "description": "Create a new Lynxtron app from the official template",
   "license": "MIT",
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
   "files": [
     "cli.js",
     "dist/"
