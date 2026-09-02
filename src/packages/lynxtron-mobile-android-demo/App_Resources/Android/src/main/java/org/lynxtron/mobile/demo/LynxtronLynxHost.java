@@ -9,6 +9,7 @@ import android.content.Context;
 import android.view.View;
 import com.facebook.drawee.backends.pipeline.Fresco;
 import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.Callback;
 import com.lynx.service.image.LynxImageService;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxError;
@@ -36,6 +37,10 @@ public final class LynxtronLynxHost {
 
     void onError(int code, String message);
 
+    void onBridgeCall(String method, String paramsJson, Callback callback);
+
+    void onBridgeSend(String method, String paramsJson);
+
     void onDestroyed();
   }
 
@@ -59,6 +64,8 @@ public final class LynxtronLynxHost {
 
     LynxViewBuilder builder = new LynxViewBuilder();
     builder.setTemplateProvider(new AssetTemplateProvider(context));
+    builder.registerModule("bridge", LynxtronBridgeModule.class, listener);
+    builder.registerModule("nodejs", LynxtronNodeModule.class);
     LynxView view = builder.build(context);
     view.addLynxViewClient(
         new LynxViewClient() {

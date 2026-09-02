@@ -1,0 +1,71 @@
+def repoRoot = System.getenv("LYNXTRON_REPO_ROOT")
+    ? file(System.getenv("LYNXTRON_REPO_ROOT"))
+    : new File(rootDir, "../../../../../../../..").canonicalFile
+def lynxSourceRoot = System.getenv("LYNX_SOURCE_ROOT")
+    ? file(System.getenv("LYNX_SOURCE_ROOT"))
+    : new File(repoRoot, "lynx")
+
+def lynxSourceAars = [
+    new File(lynxSourceRoot, "base/platform/android/build/outputs/aar/LynxBase-noasan-release.aar"),
+    new File(lynxSourceRoot, "gfx/platform/android/build/outputs/aar/LynxGfx-noasan-release.aar"),
+    new File(lynxSourceRoot, "base/trace/android/build/outputs/aar/LynxTrace-noasan-release.aar"),
+    new File(lynxSourceRoot, "platform/android/lynx_js_sdk/build/outputs/aar/LynxJSSDK-noasan-release.aar"),
+    new File(lynxSourceRoot, "platform/android/service_api/build/outputs/aar/ServiceAPI-noasan-release.aar"),
+    new File(lynxSourceRoot, "platform/android/lynx_android/build/outputs/aar/LynxAndroid-noasan-release.aar"),
+    new File(lynxSourceRoot, "platform/android/lynx_service/lynx_service_image/build/outputs/aar/lynx_service_image-release.aar"),
+]
+
+lynxSourceAars.each { aar ->
+  if (!aar.exists()) {
+    throw new GradleException(
+        "Missing source-built Lynx AAR: ${aar}. Run `npm run build:mobile-runtime` first."
+    )
+  }
+}
+
+repositories {
+  maven {
+    url "https://central.sonatype.com/repository/maven-snapshots/"
+    content {
+      includeGroup "org.lynxsdk.lynx"
+    }
+  }
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation files(lynxSourceAars)
+  implementation "org.lynxsdk.lynx:primjs:4.2.0-alpha.0-SNAPSHOT"
+  implementation "org.lynxsdk.lynx:primjsWasm:4.2.0-alpha.0-SNAPSHOT"
+  implementation "androidx.core:core:1.1.0"
+  implementation "androidx.annotation:annotation:1.0.0"
+  implementation "com.facebook.fresco:fresco:2.3.0"
+  implementation "com.facebook.fresco:animated-base:2.3.0"
+}
+
+android {
+  compileSdkVersion 35
+  buildToolsVersion "35.0.0"
+
+  defaultConfig {
+    minSdkVersion 24
+    targetSdkVersion 35
+    versionCode 1
+    versionName "0.0.1"
+    generatedDensities = []
+  }
+
+  sourceSets {
+    main {
+      java.srcDir new File(
+          repoRoot,
+          "src/packages/lynxtron-mobile-android-demo/App_Resources/Android/src/main/java"
+      )
+    }
+  }
+
+  aaptOptions {
+    additionalParameters "--no-version-vectors"
+  }
+}

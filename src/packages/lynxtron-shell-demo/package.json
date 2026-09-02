@@ -12,6 +12,11 @@
     "dev:web": "cross-env NODE_ENV=development concurrently -k --prefix node \"rspeedy dev --environment web\" \"dev-ready-rspeedy && rsbuild dev --environment web\"",
     "build:web": "rspeedy build --environment web && rsbuild build --environment web",
     "start:web": "npm run build:web && npx serve dist/web",
+    "install:mobile": "npm --prefix ./src/main/mobile install",
+    "build:mobile-runtime": "npm --prefix ../lynxtron-mobile-android-demo run prepare:lynx",
+    "prepare:mobile": "rspeedy build --environment lynx && npm --prefix ../lynxtron-mobile run build && node ./src/main/mobile/scripts/sync-bundle.mjs",
+    "build:mobile": "npm run prepare:mobile && npm --prefix ./src/main/mobile run build:android -- --emulator",
+    "start:mobile": "npm run prepare:mobile && npm --prefix ./src/main/mobile run android -- --emulator",
     "test": "rstest",
     "pack": "npm run build && lynxtron-builder --publish never"
   },

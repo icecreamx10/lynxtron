@@ -2,30 +2,23 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { fromObject } from '@nativescript/core';
-import {
-  LynxWindow,
-  installNativeAdapter,
-} from '@lynx-js/lynxtron-mobile';
+import { Dialogs } from '@nativescript/core';
+import { LynxWindow, installNativeAdapter } from '@lynx-js/lynxtron-mobile';
 
 const state = {
   callbacks: null,
-  lines: [],
   nativeListener: null,
   nativeView: null,
   pageReady: false,
   starting: false,
-  viewModel: null,
   window: null,
 };
 
 let adapterInstalled = false;
 let nextWindowId = 1;
 
-function appendLog(message) {
-  state.lines.push(message);
-  state.viewModel?.set('log', state.lines.join('\n'));
-  console.log(`[LYNXTRON_MOBILE_DEMO] ${message}`);
+function log(message) {
+  console.log(`[LYNXTRON_SHELL_MOBILE] ${message}`);
 }
 
 function host() {
@@ -45,7 +38,7 @@ function toJavaBytes(bytes) {
   return result;
 }
 
-function createRealAndroidAdapter() {
+function createAndroidAdapter() {
   return {
     platform: 'android',
     createTemplateBundle(bytes) {
@@ -65,15 +58,14 @@ function createRealAndroidAdapter() {
       const nativeView = state.nativeView;
       let destroyed = false;
       state.callbacks = callbacks;
-      appendLog(`native.createWindow #${id}`);
-      appendLog(`presentation=${options.mobile.presentation}`);
+      log(`native.createWindow #${id} (${options.mobile.presentation})`);
 
       const alive = () => {
         if (destroyed) {
           throw new Error(`window #${id} destroyed`);
         }
       };
-      const renderOptions = (loadOptions) =>
+      const renderData = (loadOptions) =>
         JSON.stringify(loadOptions?.data ?? {});
 
       return {
@@ -104,21 +96,22 @@ function createRealAndroidAdapter() {
         },
         loadFile(path, loadOptions) {
           alive();
-          const assetPath = normalizeAssetPath(path);
-          appendLog(`LynxView.renderTemplateUrl ${assetPath}`);
-          host().renderAsset(nativeView, assetPath, renderOptions(loadOptions));
+          host().renderAsset(
+            nativeView,
+            normalizeAssetPath(path),
+            renderData(loadOptions)
+          );
           return true;
         },
         loadURL(url, loadOptions) {
           alive();
           if (!url.startsWith('asset:///') && !url.startsWith('app://')) {
-            appendLog(`loadURL unsupported by asset provider: ${url}`);
             return false;
           }
           host().renderAsset(
             nativeView,
             normalizeAssetPath(url),
-            renderOptions(loadOptions)
+            renderData(loadOptions)
           );
           return true;
         },
@@ -127,13 +120,10 @@ function createRealAndroidAdapter() {
           if (!bundle.isValid()) {
             return false;
           }
-          appendLog(
-            `LynxView.renderTemplateWithBaseUrl ${bundle.bytes.byteLength}b`
-          );
           host().renderBytes(
             nativeView,
             toJavaBytes(bundle.bytes),
-            renderOptions(loadOptions),
+            renderData(loadOptions),
             'app://memory.lynx.bundle'
           );
           return true;
@@ -144,21 +134,21 @@ function createRealAndroidAdapter() {
             host().updateData(nativeView, JSON.stringify(meta.updateData));
           }
           if (meta.globalProps) {
-            host().updateGlobalProps(nativeView, JSON.stringify(meta.globalProps));
+            host().updateGlobalProps(
+              nativeView,
+              JSON.stringify(meta.globalProps)
+            );
           }
-          appendLog('LynxView.updateMetaData');
           return true;
         },
         setGlobalProps(props) {
           alive();
           host().updateGlobalProps(nativeView, JSON.stringify(props));
-          appendLog('LynxView.updateGlobalProps');
           return true;
         },
         sendGlobalEvent(name, args) {
           alive();
           host().sendGlobalEvent(nativeView, name, JSON.stringify(args));
-          appendLog(`LynxView.sendGlobalEvent ${name}`);
           return true;
         },
       };
@@ -166,106 +156,106 @@ function createRealAndroidAdapter() {
   };
 }
 
-function startLynxWindow() {
+function parseParams(paramsJson) {
+  try {
+    return JSON.parse(paramsJson);
+  } catch {
+    return {};
+  }
+}
+
+function startShellWindow() {
   if (!state.pageReady || !state.nativeView || state.starting || state.window) {
     return;
   }
 
   state.starting = true;
-  appendLog('page and native LynxView ready');
-
   const window = new LynxWindow({
     show: false,
+    title: 'Lynxtron Shell Mobile',
     mobile: { presentation: 'embedded' },
-    lynxPreference: { preloads: ['@app/device-preload'] },
   });
   state.window = window;
 
-  window.on('show', () => appendLog('event show'));
-  window.on('foreground', () => appendLog('event foreground'));
-  window.on('ready-to-show', () => appendLog('event ready-to-show'));
-  window.on('--lynx-error', (code, message) => {
-    state.viewModel?.set('status', `Lynx error ${code}`);
-    appendLog(`event --lynx-error ${message}`);
+  window.on('-lynx-invoke', async (event, method, params) => {
+    log(`bridge.call ${method}`);
+    if (method === 'showDialog') {
+      await Dialogs.alert({
+        title: 'Lynxtron Mobile',
+        message: String(params?.message ?? ''),
+        okButtonText: 'OK',
+      });
+      event.sendReply({ ok: true });
+      return;
+    }
+    event.sendReply({ error: `Unsupported mobile bridge method: ${method}` });
   });
-  window.on('on-first-screen', () => {
-    appendLog('event on-first-screen');
-    state.viewModel?.set(
-      'status',
-      `Real LynxView rendered · Window #${window.id}`
-    );
-  });
+  window.on('-lynx-message', (method) => log(`bridge.send ${method}`));
+  window.on('ready-to-show', () => log('event ready-to-show'));
+  window.on('on-first-screen', () => log('event on-first-screen'));
+  window.on('--lynx-error', (code, message) =>
+    log(`event --lynx-error ${code}: ${message}`)
+  );
 
   window.show();
   window.loadFile('app://main.lynx.bundle', {
-    data: {
-      runtime: 'Lynxtron Mobile',
-      engine: 'Lynx Android source build (DEPS.lynx)',
-    },
+    data: { platform: 'mobile', host: 'NativeScript' },
   });
 }
 
 export function createLynxView(args) {
-  state.nativeListener = new org.lynxtron.mobile.demo.LynxtronLynxHost.Listener({
-    onPageStart(url) {
-      appendLog(`native.onPageStart ${url}`);
-    },
-    onRuntimeReady() {
-      appendLog('native.onRuntimeReady');
-    },
-    onLoadSuccess() {
-      appendLog('native.onLoadSuccess');
-      state.callbacks?.emit('ready-to-show');
-    },
-    onFirstScreen() {
-      appendLog('native.onFirstScreen');
-      state.callbacks?.emit('on-first-screen');
-    },
-    onError(code, message) {
-      appendLog(`native.onError ${code}: ${message}`);
-      state.callbacks?.emit('--lynx-error', code, message);
-    },
-    onBridgeCall(method, paramsJson, callback) {
-      appendLog(`native.bridge.call ${method}`);
-      const reply = (result) => {
-        callback.invoke(result ?? null);
-        return true;
-      };
-      state.callbacks?.invoke(method, JSON.parse(paramsJson), reply);
-    },
-    onBridgeSend(method, paramsJson) {
-      appendLog(`native.bridge.send ${method}`);
-      state.callbacks?.message(method, JSON.parse(paramsJson));
-    },
-    onDestroyed() {
-      appendLog('native.onDestroyed');
-    },
-  });
+  state.nativeListener = new org.lynxtron.mobile.demo.LynxtronLynxHost.Listener(
+    {
+      onPageStart(url) {
+        log(`native.onPageStart ${url}`);
+      },
+      onRuntimeReady() {
+        log('native.onRuntimeReady');
+      },
+      onLoadSuccess() {
+        log('native.onLoadSuccess');
+        state.callbacks?.emit('ready-to-show');
+      },
+      onFirstScreen() {
+        log('native.onFirstScreen');
+        state.callbacks?.emit('on-first-screen');
+      },
+      onError(code, message) {
+        log(`native.onError ${code}: ${message}`);
+        state.callbacks?.emit('--lynx-error', code, message);
+      },
+      onBridgeCall(method, paramsJson, callback) {
+        const reply = (result) => {
+          callback.invoke(result ?? null);
+          return true;
+        };
+        state.callbacks?.invoke(method, parseParams(paramsJson), reply);
+      },
+      onBridgeSend(method, paramsJson) {
+        state.callbacks?.message(method, parseParams(paramsJson));
+      },
+      onDestroyed() {
+        log('native.onDestroyed');
+      },
+    }
+  );
 
   state.nativeView = host().create(args.context, state.nativeListener);
   args.view = state.nativeView;
-  appendLog('real com.lynx.tasm.LynxView attached');
-  startLynxWindow();
+  startShellWindow();
 }
 
 export function onNavigatingTo(args) {
   const page = args.object;
-  state.lines = [];
   state.pageReady = true;
   state.starting = false;
-  state.viewModel = fromObject({
-    status: 'Starting real Lynx runtime…',
-    log: '',
-  });
-  page.bindingContext = state.viewModel;
 
   if (!adapterInstalled) {
-    installNativeAdapter(createRealAndroidAdapter());
+    installNativeAdapter(createAndroidAdapter());
     adapterInstalled = true;
   }
 
-  startLynxWindow();
-
+  startShellWindow();
   page.on('unloaded', () => {
     state.window?.destroy();
     state.callbacks = null;

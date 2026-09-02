@@ -1,0 +1,9 @@
+<Page
+  actionBarHidden="true"
+  navigatingTo="onNavigatingTo"
+  xmlns="http://schemas.nativescript.org/tns.xsd"
+>
+  <GridLayout>
+    <Placeholder creatingView="createLynxView" />
+  </GridLayout>
+</Page>

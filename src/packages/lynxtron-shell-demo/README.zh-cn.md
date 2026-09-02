@@ -11,7 +11,7 @@
 ## 特性
 
 /* WEB_SUPPORT_START */
-- 同一套 UI 代码可运行在桌面端 (Node.js) 和 Web 端 (Browser)
+- 同一套 UI 代码可运行在桌面端、Web 端和 Mobile 端（NativeScript + 原生 LynxView）
 /* WEB_SUPPORT_END */
 - 一键运行、调试、打包
 - 支持类型增强语言 Typescript
@@ -30,6 +30,7 @@
 
 ```bash
 npm install
+npm run install:mobile
 ```
 
 ### 开发模式
@@ -45,6 +46,14 @@ npm install
   npm run dev:web
   ```
 /* WEB_SUPPORT_END */
+
+- **Mobile 端（Android 模拟器）**
+
+  ```bash
+  export JAVA_HOME=/path/to/jdk-21
+  export ANDROID_HOME=/path/to/android-sdk
+  npm run start:mobile
+  ```
 
 ### 构建与启动
 
@@ -70,6 +79,30 @@ npm install
   npm run start:web
   ```
 /* WEB_SUPPORT_END */
+
+- **构建 Mobile Android**
+
+  ```bash
+  npm run build:mobile
+  ```
+
+  前端命令只构建 Lynx bundle 和 Android 应用，并复用本地已经构建好的
+  Mobile Runtime；这与桌面前端复用 Lynxtron Runtime、而不重新编译它一致。
+
+- **从 Lynx 源码构建 Mobile Runtime**
+
+  首次同步 Lynx 后或 Lynx 源码版本变化时执行：
+
+  ```bash
+  export LYNX_JAVA_HOME=/path/to/jdk-11
+  export ANDROID_HOME=/path/to/android-sdk
+  npm run build:mobile-runtime
+  ```
+
+  Runtime 命令直接从 `src/dependencies/DEPS.lynx` 锁定的源码构建 Lynx
+  Android AAR，不依赖已发布的 Lynx Android SDK。当前 P0 暂时把
+  `nodejs.echo` 映射为 Android 原生模块；preload 接入后再替换为同 isolate
+  的 NativeScript BTS Worker。
 
 ### 应用打包
 

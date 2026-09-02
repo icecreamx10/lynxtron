@@ -5,19 +5,17 @@
 import { useCallback } from '@lynx-js/react';
 import './App.css';
 import placeholder from '@assets/placeholder.png?inline';
+import { echoFromHost, showHostDialog } from './symmetric-host';
 
 export function App() {
   const handleTap = useCallback(() => {
-    console.log('[App] handleTap triggered', NativeModules.nodejs.exposed);
-    NativeModules.bridge.call(
-      'showDialog',
-      {
-        message: NativeModules.nodejs.exposed.echo('Hello from Lynxtron!'),
-      },
-      () => {
-        console.log('[App] bridge.request callback fired');
-      }
-    );
+    'background only';
+
+    const message = echoFromHost('Hello from Lynxtron!');
+    console.log('[App] handleTap triggered', message);
+    showHostDialog(message, () => {
+      console.log('[App] bridge.request callback fired');
+    });
   }, []);
 
   return (
