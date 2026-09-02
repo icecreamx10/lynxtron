@@ -12,6 +12,13 @@ interface SymmetricNodeModule extends Partial<EchoProvider> {
 
 interface RetouchNativeGate0Module {
   greeting(): string;
+  probe(): RetouchNativeGate0Result;
+}
+
+export interface RetouchNativeGate0Result {
+  moduleName: string;
+  message: string;
+  isMainThread: boolean;
 }
 
 interface LynxNapiModuleLoader {
@@ -31,6 +38,17 @@ export function greetingFromRetouchNative(): string {
     throw new Error('RetouchNative.greeting is unavailable');
   }
   return module.greeting();
+}
+
+export function probeRetouchNative(): RetouchNativeGate0Result {
+  'background only';
+
+  const loader = (lynx as unknown as LynxWithNapiLoader).getModuleLoader();
+  const module = loader.load('RetouchNative') as RetouchNativeGate0Module;
+  if (typeof module?.probe !== 'function') {
+    throw new Error('RetouchNative.probe is unavailable');
+  }
+  return module.probe();
 }
 
 export function echoFromHost(message: string): string {

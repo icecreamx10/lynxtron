@@ -24,6 +24,71 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
+.GateCard {
+  display: flex;
+  flex-direction: column;
+  width: 520px;
+  margin-top: 24px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.GateHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.GateTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.GateBadge {
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6e6e73;
+  background-color: #e8e8ed;
+}
+
+.GateBadgePASS {
+  color: #16733c;
+  background-color: #dff7e8;
+}
+
+.GateBadgeFAIL {
+  color: #a51d2d;
+  background-color: #fde7ea;
+}
+
+.GateDetails {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #6e6e73;
+}
+
+.GateButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background-color: #0071e3;
+}
+
+.GateButtonText {
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .Title {
   font-size: 32px;
   font-weight: bold;
