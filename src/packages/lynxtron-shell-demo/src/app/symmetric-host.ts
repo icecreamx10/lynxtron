@@ -10,6 +10,29 @@ interface SymmetricNodeModule extends Partial<EchoProvider> {
   exposed?: Partial<EchoProvider>;
 }
 
+interface RetouchNativeGate0Module {
+  greeting(): string;
+}
+
+interface LynxNapiModuleLoader {
+  load(name: string): unknown;
+}
+
+interface LynxWithNapiLoader {
+  getModuleLoader(): LynxNapiModuleLoader;
+}
+
+export function greetingFromRetouchNative(): string {
+  'background only';
+
+  const loader = (lynx as unknown as LynxWithNapiLoader).getModuleLoader();
+  const module = loader.load('RetouchNative') as RetouchNativeGate0Module;
+  if (typeof module?.greeting !== 'function') {
+    throw new Error('RetouchNative.greeting is unavailable');
+  }
+  return module.greeting();
+}
+
 export function echoFromHost(message: string): string {
   'background only';
 
