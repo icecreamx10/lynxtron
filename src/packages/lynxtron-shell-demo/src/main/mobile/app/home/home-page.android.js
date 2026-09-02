@@ -203,6 +203,15 @@ function startShellWindow() {
   });
 }
 
+function destroyShellWindow() {
+  state.window?.destroy();
+  state.callbacks = null;
+  state.nativeView = null;
+  state.pageReady = false;
+  state.starting = false;
+  state.window = null;
+}
+
 export function createLynxView(args) {
   state.nativeListener = new org.lynxtron.mobile.demo.LynxtronLynxHost.Listener(
     {
@@ -256,12 +265,21 @@ export function onNavigatingTo(args) {
   }
 
   startShellWindow();
-  page.on('unloaded', () => {
-    state.window?.destroy();
-    state.callbacks = null;
-    state.nativeView = null;
-    state.pageReady = false;
-    state.starting = false;
-    state.window = null;
-  });
+  if (!page.__lynxtronLifecycleBound) {
+    page.__lynxtronLifecycleBound = true;
+    page.on('loaded', () => {
+      state.pageReady = true;
+      state.window?.show();
+      startShellWindow();
+    });
+    page.on('unloaded', () => {
+      state.window?.hide();
+      state.pageReady = false;
+    });
+    page.on('navigatedFrom', (event) => {
+      if (event.isBackNavigation) {
+        destroyShellWindow();
+      }
+    });
+  }
 }

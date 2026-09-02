@@ -2,7 +2,7 @@
 
 > 目标：只复刻 Lynxtron 的 Lynx 宿主能力，不复刻完整 Electron API，也不重复封装 NativeScript 已有能力。
 
-P0 JS MVP 已落在 [`src/packages/lynxtron-mobile`](../src/packages/lynxtron-mobile/README.md)。当前包含可执行、可测试的 JS contract 和 native adapter ABI；Android demo 已从 `DEPS.lynx` 锁定的 Lynx 源码构建 AAR，并通过 NativeScript Java 互操作接入真实 `LynxView`。iOS 与 NativeScript Worker isolate 的原生接入尚待实现。
+P0 JS MVP 已落在 [`src/packages/lynxtron-mobile`](../src/packages/lynxtron-mobile/README.md)。当前包含可执行、可测试的 JS contract 和 native adapter ABI；Android demo 已从 `DEPS.lynx` 锁定的 Lynx 源码构建 AAR，并通过 NativeScript Java 互操作接入真实 `LynxView`。iOS shell 也已从本地 Lynx 源码构建并接入真实 `LynxView`，验证了 BTS static N-API 与原生画布 surface contract；NativeScript Worker 共享 isolate 仍待实现。
 
 ## 1. 范围原则
 
@@ -205,7 +205,7 @@ interface LynxWindowEventMap {
 
 ### 3.2 内部 `LynxView` 与公共 API 边界
 
-Android/iOS 的 native `LynxView` 是 `LynxWindow` 的内部渲染对象，不作为 Mobile P0 的第二套 JS API。Android MVP 直接使用 Lynxtron 锁定的 Lynx 源码构建产物，不依赖已发布的 Lynx Android SDK：
+Android/iOS 的 native `LynxView` 是 `LynxWindow` 的内部渲染对象，不作为 Mobile P0 的第二套 JS API。两个平台的 MVP 都直接使用 Lynxtron 锁定的 Lynx 源码构建产物，不依赖已发布的 Lynx SDK：
 
 ```text
 JS LynxWindow（唯一公共页面对象）
@@ -219,6 +219,17 @@ JS LynxWindow（唯一公共页面对象）
 `loadFile/loadURL/loadBundle/updateMetaData` 等内容接口全部直接放在 `LynxWindow` 上，与 PC 保持一致。
 
 只有未来明确需要“在一个 NativeScript 页面布局中嵌入多个独立 Lynx 区块”时，才增加可选的 `LynxView` NativeScript UI component。它不进入第一版复刻范围，也不阻塞 `LynxWindow` 实现。
+
+#### 3.2.1 原生画布 surface contract
+
+需要原生渲染目标的页面组件使用 Lynx custom element（当前 probe 名为 `x-texture-view`）建立宿主边界。它向 BTS 发出：
+
+- `createsurface`：返回 `surfaceID`、物理像素尺寸、pixel ratio 和进程 ID。
+- `resize`：布局或屏幕 scale 变化后的 point/pixel 尺寸。
+- `foreground`、`background`、`destroy`：驱动渲染目标的暂停、恢复与释放。
+- `mousedown`、`mousemove`、`mouseup`、`hover`、`zoom`：把 UIKit 输入映射到页面事件。
+
+`surfaceID` 只是当前进程内的 opaque integer token，不是 `UIView *`、`CALayer *` 或 `IOSurfaceRef` 的数值地址。Native capability plugin 通过宿主 registry 将 token 解析为弱引用 `UIView`，再创建自己的 on-screen render target。这样页面 JS 只持有稳定标识，不获得任意原生对象访问能力；View 销毁时 registry 会同步失效 token。
 
 ### 3.3 模板与数据类型
 

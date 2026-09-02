@@ -1,11 +1,12 @@
 # Lynxtron Mobile：PC 模型的移动端对偶设计
 
-> 状态：架构草案；P0 JS MVP 与 Android 源码构建 demo 已建立
+> 状态：架构草案；P0 JS MVP 与 Android/iOS 源码构建 demo 已建立；iOS Gate 1 原生画布 surface contract 已在 iPad 模拟器验证
 > 核心结论：Lynxtron Mobile 是建立在 NativeScript 上的一组 Lynx 插件，而不是另一套移动端 Shell。它保留多 JS Realm 模型并使用 Lynx 原生端渲染；BTS 在 Lynx Runtime 中挂载 NativeScript preload context，MTS 增加独立 preload。preload 与 Lynx Realm 之间不引入应用级 RPC。
 
 具体 JS API 复刻范围见 [`mobile-js-api-scope.md`](./mobile-js-api-scope.md)。
 P0 MVP 包见 [`src/packages/lynxtron-mobile`](../src/packages/lynxtron-mobile/README.md)。
 Android demo 见 [`src/packages/lynxtron-mobile-android-demo`](../src/packages/lynxtron-mobile-android-demo/README.md)：它从 `DEPS.lynx` 锁定的源码直接构建并嵌入 `LynxView`，不消费已发布的 Lynx Android SDK。
+iOS host 见 [`src/packages/lynxtron-shell-demo/src/main/mobile`](../src/packages/lynxtron-shell-demo/src/main/mobile)：它通过本地 Lynx 源码 Pod 构建 `LynxView`，并在 NativeScript 页面内直接端渲染。
 
 ## 1. 设计目标
 

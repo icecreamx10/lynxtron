@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxtronIOSHost.h"
+#import "LynxtronTextureViewUI.h"
 
 #import <Lynx/LynxConfig.h>
 #import <Lynx/LynxTemplateData.h>
@@ -58,6 +59,7 @@ static NSString *LynxtronJSONString(id value) {
   LynxConfig *config = [[LynxConfig alloc] initWithProvider:nil];
   [config registerModule:LynxtronBridgeModule.class param:self];
   [config registerModule:LynxtronNodeModule.class];
+  [config registerUI:LynxtronTextureViewUI.class withName:@"x-texture-view"];
 
   LynxView *view = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
     builder.config = config;
@@ -130,9 +132,15 @@ static NSString *LynxtronJSONString(id value) {
 
 - (void)show {
   self.lynxView.hidden = NO;
+  [NSNotificationCenter.defaultCenter
+      postNotificationName:@"LynxtronSurfaceDidEnterForeground"
+                    object:nil];
 }
 
 - (void)hide {
+  [NSNotificationCenter.defaultCenter
+      postNotificationName:@"LynxtronSurfaceDidEnterBackground"
+                    object:nil];
   self.lynxView.hidden = YES;
 }
 

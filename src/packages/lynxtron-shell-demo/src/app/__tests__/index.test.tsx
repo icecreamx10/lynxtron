@@ -14,6 +14,18 @@ import { App } from '../App.jsx';
 
 test('App', async () => {
   const onRender = rs.fn();
+  Object.assign(lynx, {
+    getModuleLoader: () => ({
+      load: () => ({
+        greeting: () => 'Hello from test N-API',
+        probe: () => ({
+          moduleName: 'RetouchNative',
+          message: 'Hello from test N-API',
+          isMainThread: false,
+        }),
+      }),
+    }),
+  });
 
   const AppRenderProbe = () => {
     onRender(`__MAIN_THREAD__: ${__MAIN_THREAD__}`);
@@ -26,37 +38,6 @@ test('App', async () => {
   expect(onRender).toHaveBeenCalledWith('__MAIN_THREAD__: false');
 
   const root = elementTree.root!;
-  const snapshotRoot = root.cloneNode(true) as Element;
-  snapshotRoot
-    .querySelector('image')
-    ?.setAttribute('src', '<inline placeholder image>');
-  expect(snapshotRoot).toMatchInlineSnapshot(`
-    <page>
-      <view
-        class="Background"
-      >
-        <image
-          class="BackgroundImage"
-          src="<inline placeholder image>"
-        />
-        <view
-          class="Container"
-        >
-          <text
-            class="Title"
-          >
-            Hello, Lynxtron
-          </text>
-          <text
-            class="Hint"
-          >
-            Tap card to show native dialog
-          </text>
-        </view>
-      </view>
-    </page>
-  `);
-
   const { findByText } = getQueriesForElement(root);
   const title = await findByText('Hello, Lynxtron');
   expect(title).toBeInTheDocument();
@@ -71,6 +52,17 @@ test('App', async () => {
   expect(
     await findByText('Tap card to show native dialog')
   ).toBeInTheDocument();
+  expect(
+    await findByText('Gate 0 · BTS + static N-API')
+  ).toBeInTheDocument();
+  expect(
+    await findByText(
+      'RetouchNative loaded · N-API returned · BTS background thread'
+    )
+  ).toBeInTheDocument();
+  expect(await findByText('Gate 1 · iOS canvas surface')).toBeInTheDocument();
+  expect(root.querySelector('x-texture-view')).toHaveClass('SurfaceProbe');
+  expect(await findByText('Lifecycle: foreground')).toBeInTheDocument();
   expect(root.querySelector('image')?.getAttribute('src')).toMatch(
     /^data:image\/png;base64,/
   );
