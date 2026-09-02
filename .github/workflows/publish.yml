@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'release tag (e.g. v1.2.3). A `<tag>-dev` variant is published alongside.'
+        description: 'release tag (e.g. v1.2.3). Release and DevTool runtimes are published together.'
         required: true
         type: string
 
@@ -23,8 +23,6 @@ jobs:
     outputs:
       version: ${{ steps.set-version.outputs.version }}
       tag: ${{ steps.set-version.outputs.tag }}
-      dev_version: ${{ steps.set-version.outputs.dev_version }}
-      dev_tag: ${{ steps.set-version.outputs.dev_tag }}
     steps:
       - name: Validate and set version
         id: set-version
@@ -35,21 +33,14 @@ jobs:
           fi
           tag="v${INPUT_TAG#v}"
           version="${tag#v}"
-          # Reject only `-dev` inputs so we don't clash with the derived
-          # `<version>-dev` twin; other pre-release labels (alpha/beta/rc)
-          # are allowed to pass through.
           case "$version" in
             *-dev|*-dev.*)
-              echo "tag must not include a '-dev' pre-release label; got '$version'"
+              echo "tag must not include a '-dev' pre-release label; use a regular version because Release and DevTool runtimes are published together"
               exit 1
               ;;
           esac
-          dev_version="${version}-dev"
-          dev_tag="v${dev_version}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "dev_tag=$dev_tag" >> "$GITHUB_OUTPUT"
-          echo "dev_version=$dev_version" >> "$GITHUB_OUTPUT"
 
   build-macos:
     needs: get-version
@@ -68,7 +59,7 @@ jobs:
         uses: ./lynxtron/.github/actions/macos-lynxtron-build
         with:
           build-arch: ${{ matrix.arch }}
-          enable-inspector: ${{ needs.get-version.outputs.enable_inspector }}
+          enable-inspector: 'false'
       - name: Package macOS binary
         run: |
           set -x
@@ -105,13 +96,16 @@ jobs:
           zip -r -y "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-symbols.zip" "$SYMBOLS_DIR"
           ls -lh "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-symbols.zip"
 
-          # Build and package node headers
-          rm -rf node_headers
-          cd ${{ github.workspace }}/lynxtron
-          python3 lynxtron_tools/copy_node_headers.py
-          cd out/Release
-          zip -r "../../publish/lynxtron-v${VERSION}-node-headers.zip" node_headers
-          ls -lh "../../publish/lynxtron-v${VERSION}-node-headers.zip"
+          # Node headers are architecture-independent. Package them once to avoid
+          # duplicate artifact names across the macOS matrix.
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            rm -rf node_headers
+            cd ${{ github.workspace }}/lynxtron
+            python3 lynxtron_tools/copy_node_headers.py
+            cd out/Release
+            zip -r "../../publish/lynxtron-v${VERSION}-node-headers.zip" node_headers
+            ls -lh "../../publish/lynxtron-v${VERSION}-node-headers.zip"
+          fi
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
@@ -123,6 +117,7 @@ jobs:
           name: lynxtron-darwin-${{ matrix.arch }}-symbols
           path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}-symbols.zip
       - name: Upload node headers
+        if: matrix.arch == 'arm64'
         uses: actions/upload-artifact@v4
         with:
           name: lynxtron-node-headers
@@ -145,6 +140,7 @@ jobs:
         uses: ./lynxtron/.github/actions/linux-lynxtron-build
         with:
           build-arch: ${{ matrix.arch }}
+          enable-inspector: 'false'
           gn-args: symbol_level=1
       - name: Package Linux binary
         shell: bash
@@ -230,7 +226,7 @@ jobs:
         uses: ./lynxtron/.github/actions/windows-lynxtron-build
         with:
           build-arch: ${{ matrix.arch }}
-          enable-inspector: ${{ needs.get-version.outputs.enable_inspector }}
+          enable-inspector: 'false'
       - name: Package Windows binary
         shell: PowerShell
         run: |
@@ -303,7 +299,7 @@ jobs:
           name: lynxtron-win32-${{ matrix.arch }}-symbols
           path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}-symbols.zip
 
-  build-macos-dev:
+  build-macos-devtool:
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-darwin-15.6.1-medium
@@ -317,16 +313,16 @@ jobs:
         with:
           path: lynxtron
           ref: ${{ github.ref_name }}
-      - name: Build macOS Lynxtron (dev)
+      - name: Build macOS Lynxtron (DevTool)
         uses: ./lynxtron/.github/actions/macos-lynxtron-build
         with:
           build-arch: ${{ matrix.arch }}
           enable-inspector: 'true'
-      - name: Package macOS binary (dev)
+      - name: Package macOS binary (DevTool)
         run: |
           set -x
           cd ${{ github.workspace }}/lynxtron
-          VERSION=${{ needs.get-version.outputs.dev_version }}
+          VERSION=${{ needs.get-version.outputs.version }}
           mkdir -p publish
           cd out/Release
           if [ -d "Lynxtron.app" ]; then
@@ -344,27 +340,27 @@ jobs:
           mkdir -p dist
           cp -R "$APP_NAME" dist/
           cd dist
-          zip -ry "$OLDPWD/../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}.zip" "$APP_NAME"
+          zip -ry "$OLDPWD/../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-devtool.zip" "$APP_NAME"
           ls -lh "$OLDPWD/../../publish/"
 
           cd "$OLDPWD"
-          SYMBOLS_DIR="v${VERSION}-darwin-${{ matrix.arch }}-symbols"
+          SYMBOLS_DIR="v${VERSION}-darwin-${{ matrix.arch }}-devtool-symbols"
           mkdir -p "$SYMBOLS_DIR"
           find . -path "./v${VERSION}-*" -prune -o -name "*.dSYM" -exec cp -r {} "$SYMBOLS_DIR/" \;
-          zip -r -y "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-symbols.zip" "$SYMBOLS_DIR"
-          ls -lh "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-symbols.zip"
-      - name: Upload macOS artifact (dev)
+          zip -r -y "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-devtool-symbols.zip" "$SYMBOLS_DIR"
+          ls -lh "../../publish/lynxtron-v${VERSION}-darwin-${{ matrix.arch }}-devtool-symbols.zip"
+      - name: Upload macOS artifact (DevTool)
         uses: actions/upload-artifact@v4
         with:
-          name: dev-lynxtron-darwin-${{ matrix.arch }}
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.dev_version }}-darwin-${{ matrix.arch }}.zip
-      - name: Upload macOS symbols (dev)
+          name: devtool-lynxtron-darwin-${{ matrix.arch }}
+          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}-devtool.zip
+      - name: Upload macOS symbols (DevTool)
         uses: actions/upload-artifact@v4
         with:
-          name: dev-lynxtron-darwin-${{ matrix.arch }}-symbols
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.dev_version }}-darwin-${{ matrix.arch }}-symbols.zip
+          name: devtool-lynxtron-darwin-${{ matrix.arch }}-symbols
+          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}-devtool-symbols.zip
 
-  build-linux-dev:
+  build-linux-devtool:
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-ubuntu-22.04-medium
@@ -378,19 +374,19 @@ jobs:
         with:
           path: lynxtron
           ref: ${{ github.ref_name }}
-      - name: Build Linux Lynxtron (dev)
+      - name: Build Linux Lynxtron (DevTool)
         uses: ./lynxtron/.github/actions/linux-lynxtron-build
         with:
           build-arch: ${{ matrix.arch }}
           enable-inspector: 'true'
           gn-args: symbol_level=1
-      - name: Package Linux binary (dev)
+      - name: Package Linux binary (DevTool)
         shell: bash
         run: |
           set -euxo pipefail
           cd "${{ github.workspace }}/lynxtron"
           source lynxtron_tools/envsetup.sh
-          VERSION=${{ needs.get-version.outputs.dev_version }}
+          VERSION=${{ needs.get-version.outputs.version }}
           mkdir -p publish
 
           SYMBOLS_DIR="out/Release/lynxtron-symbols"
@@ -426,25 +422,25 @@ jobs:
           fi
 
           ninja -C out/Release lynxtron_dist_zip
-          mv out/Release/dist.zip "publish/lynxtron-v${VERSION}-linux-${{ matrix.arch }}.zip"
-          ls -lh "publish/lynxtron-v${VERSION}-linux-${{ matrix.arch }}.zip"
+          mv out/Release/dist.zip "publish/lynxtron-v${VERSION}-linux-${{ matrix.arch }}-devtool.zip"
+          ls -lh "publish/lynxtron-v${VERSION}-linux-${{ matrix.arch }}-devtool.zip"
 
           cd out/Release
           python3 "${{ github.workspace }}/lynxtron/src/tools/compress_helper.py" lynxtron-symbols
-          mv lynxtron-symbols.zip "../../publish/lynxtron-v${VERSION}-linux-${{ matrix.arch }}-symbols.zip"
-          ls -lh "../../publish/lynxtron-v${VERSION}-linux-${{ matrix.arch }}-symbols.zip"
-      - name: Upload Linux artifact (dev)
+          mv lynxtron-symbols.zip "../../publish/lynxtron-v${VERSION}-linux-${{ matrix.arch }}-devtool-symbols.zip"
+          ls -lh "../../publish/lynxtron-v${VERSION}-linux-${{ matrix.arch }}-devtool-symbols.zip"
+      - name: Upload Linux artifact (DevTool)
         uses: actions/upload-artifact@v4
         with:
-          name: dev-lynxtron-linux-${{ matrix.arch }}
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.dev_version }}-linux-${{ matrix.arch }}.zip
-      - name: Upload Linux symbols (dev)
+          name: devtool-lynxtron-linux-${{ matrix.arch }}
+          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-linux-${{ matrix.arch }}-devtool.zip
+      - name: Upload Linux symbols (DevTool)
         uses: actions/upload-artifact@v4
         with:
-          name: dev-lynxtron-linux-${{ matrix.arch }}-symbols
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.dev_version }}-linux-${{ matrix.arch }}-symbols.zip
+          name: devtool-lynxtron-linux-${{ matrix.arch }}-symbols
+          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-linux-${{ matrix.arch }}-devtool-symbols.zip
 
-  build-windows-dev:
+  build-windows-devtool:
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-windows-2022-large
@@ -465,15 +461,15 @@ jobs:
         with:
           path: lynxtron
           ref: ${{ github.ref_name }}
-      - name: Build Windows Lynxtron (dev)
+      - name: Build Windows Lynxtron (DevTool)
         uses: ./lynxtron/.github/actions/windows-lynxtron-build
         with:
           build-arch: ${{ matrix.arch }}
           enable-inspector: 'true'
-      - name: Package Windows binary (dev)
+      - name: Package Windows binary (DevTool)
         shell: PowerShell
         run: |
-          $VERSION = "${{ needs.get-version.outputs.dev_version }}"
+          $VERSION = "${{ needs.get-version.outputs.version }}"
           $workspace = "${{ github.workspace }}\lynxtron"
           $outDir = "$workspace\out"
           $releaseDir = "$outDir\Release"
@@ -507,8 +503,8 @@ jobs:
 
           Set-Location $outDir
           python "$workspace\src\tools\compress_helper.py" lynxtron_archive
-          Rename-Item -Path "$outDir\lynxtron_archive.zip" -NewName "lynxtron-v${VERSION}-win32-${{ matrix.arch }}.zip"
-          Move-Item -Path "$outDir\lynxtron-v${VERSION}-win32-${{ matrix.arch }}.zip" -Destination "$workspace\publish\" -Force
+          Rename-Item -Path "$outDir\lynxtron_archive.zip" -NewName "lynxtron-v${VERSION}-win32-${{ matrix.arch }}-devtool.zip"
+          Move-Item -Path "$outDir\lynxtron-v${VERSION}-win32-${{ matrix.arch }}-devtool.zip" -Destination "$workspace\publish\" -Force
 
           $symbolsDir = "$outDir\lynxtron-symbols"
           if (Test-Path $symbolsDir) { Remove-Item -Recurse -Force $symbolsDir }
@@ -516,18 +512,18 @@ jobs:
           Get-ChildItem -Path $releaseDir -Filter "*.pdb" -Recurse | Copy-Item -Destination $symbolsDir -Force
           Set-Location $outDir
           python "$workspace\src\tools\compress_helper.py" lynxtron-symbols
-          Rename-Item -Path "$outDir\lynxtron-symbols.zip" -NewName "lynxtron-v${VERSION}-win32-${{ matrix.arch }}-symbols.zip"
-          Move-Item -Path "$outDir\lynxtron-v${VERSION}-win32-${{ matrix.arch }}-symbols.zip" -Destination "$workspace\publish\" -Force
-      - name: Upload Windows artifact (dev)
+          Rename-Item -Path "$outDir\lynxtron-symbols.zip" -NewName "lynxtron-v${VERSION}-win32-${{ matrix.arch }}-devtool-symbols.zip"
+          Move-Item -Path "$outDir\lynxtron-v${VERSION}-win32-${{ matrix.arch }}-devtool-symbols.zip" -Destination "$workspace\publish\" -Force
+      - name: Upload Windows artifact (DevTool)
         uses: actions/upload-artifact@v4
         with:
-          name: dev-lynxtron-win32-${{ matrix.arch }}
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.dev_version }}-win32-${{ matrix.arch }}.zip
-      - name: Upload Windows symbols (dev)
+          name: devtool-lynxtron-win32-${{ matrix.arch }}
+          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}-devtool.zip
+      - name: Upload Windows symbols (DevTool)
         uses: actions/upload-artifact@v4
         with:
-          name: dev-lynxtron-win32-${{ matrix.arch }}-symbols
-          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.dev_version }}-win32-${{ matrix.arch }}-symbols.zip
+          name: devtool-lynxtron-win32-${{ matrix.arch }}-symbols
+          path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}-devtool-symbols.zip
 
   build-cef-webview-macos:
     needs: get-version
@@ -613,6 +609,9 @@ jobs:
         build-macos,
         build-linux,
         build-windows,
+        build-macos-devtool,
+        build-linux-devtool,
+        build-windows-devtool,
       ]
     runs-on: lynx-ubuntu-22.04-medium
     permissions:
@@ -625,7 +624,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          pattern: '{lynxtron-*,cef-webview-*}'
+          pattern: '{lynxtron-*,devtool-lynxtron-*,cef-webview-*}'
       - name: List artifacts
         run: ls -lhR artifacts/
       - name: Create GitHub Release and upload assets
@@ -633,33 +632,6 @@ jobs:
         with:
           tag: ${{ needs.get-version.outputs.tag }}
           name: Release ${{ needs.get-version.outputs.tag }}
-          generateReleaseNotes: true
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          artifacts: 'artifacts/**/*.zip'
-
-  create-release-dev:
-    needs: [get-version, build-macos-dev, build-linux-dev, build-windows-dev]
-    runs-on: lynx-ubuntu-22.04-medium
-    permissions:
-      contents: write
-    defaults:
-      run:
-        working-directory: ./
-    steps:
-      - name: Download dev artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: 'dev-*'
-      - name: List artifacts
-        run: ls -lhR artifacts/
-      - name: Create GitHub Release and upload assets (dev)
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ needs.get-version.outputs.dev_tag }}
-          name: Release ${{ needs.get-version.outputs.dev_tag }}
-          prerelease: true
           generateReleaseNotes: true
           allowUpdates: true
           artifactErrorsFailBuild: true
@@ -719,62 +691,6 @@ jobs:
       - name: Publish
         run: |-
           NPM_TAG=${{ steps.prepare.outputs.npm_tag }}
-          cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynxtron
-          npm publish --access public --provenance --tag "$NPM_TAG"
-          cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynxtron-dev-plugins
-          npm publish --access public --provenance --tag "$NPM_TAG"
-          cd $GITHUB_WORKSPACE/lynxtron/src/packages/create-lynxtron
-          npm publish --access public --provenance --tag "$NPM_TAG"
-          cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynxtron-builder
-          npm publish --access public --provenance --tag "$NPM_TAG"
-          cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynxtron-rebuild
-          npm publish --access public --provenance --tag "$NPM_TAG"
-          cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynx-library-headers
-          npm publish --access public --provenance --tag "$NPM_TAG"
-          cd $GITHUB_WORKSPACE/lynxtron/src/packages/cef-webview
-          npm publish --access public --provenance --tag "$NPM_TAG"
-
-  publish-npm-dev:
-    needs: [get-version, create-release-dev]
-    runs-on: macos-latest
-    permissions:
-      contents: read
-      id-token: write
-    defaults:
-      run:
-        working-directory: lynxtron/src/packages/lynxtron
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynxtron
-          ref: ${{ github.ref_name }}
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.14.1
-          registry-url: 'https://registry.npmjs.org'
-          provenance: false
-      - name: Sync version from dev tag
-        id: prepare
-        run: |
-          VERSION=${{ needs.get-version.outputs.dev_version }}
-          cd ${{ github.workspace }}/lynxtron
-          git config --global user.name "Lynxtron Scripts"
-          git config --global user.email "scripts@lynxtron.com"
-          source lynxtron_tools/envsetup.sh
-          python3 lynxtron_tools/prepare_build_env.py
-          cd ${{ github.workspace }}/lynxtron/lynx/third_party/weak-node-api/
-          python3 setup_deps.py
-          echo "Using npm dist-tag: dev"
-          cd ${{ github.workspace }}/lynxtron/src/packages
-          python3 publish_prepare.py --version "$VERSION"
-      - name: Publish
-        run: |-
-          NPM_TAG=dev
           cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynxtron
           npm publish --access public --provenance --tag "$NPM_TAG"
           cd $GITHUB_WORKSPACE/lynxtron/src/packages/lynxtron-dev-plugins

@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import zipLib from 'zip-lib';
 import { downloadBinary } from '../utils/download.js';
 import { BASE_URL, VERSION, ARCH, PLATFORM} from '../utils/env-config.js';
-import extractZip from 'extract-zip';
 
+const { extract: extractZip } = zipLib;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -58,12 +59,13 @@ if (!fs.existsSync(PACKAGE_PATH)) {
 console.log(`Begin extract zip file: ${PACKAGE_PATH}`);
 
 try {
-  // Unzip file by extract-zip module
+  // Extract into a canonical path so zip-lib can enforce its symlink boundary.
   const TMP_DIR = path.join(CEF_WEBVIEW_PATH, '_tmp_extract');
   if (!fs.existsSync(TMP_DIR)) {
     fs.mkdirSync(TMP_DIR, { recursive: true });
   }
-  await extractZip(PACKAGE_PATH, { dir: TMP_DIR });
+  const realTmpDir = fs.realpathSync(TMP_DIR);
+  await extractZip(PACKAGE_PATH, realTmpDir, { safeSymlinksOnly: true });
   const SRC_DIR = path.join(TMP_DIR, `cef_webview-v${VERSION}-${PLATFORM}-${ARCH}`);
   const items = fs.readdirSync(SRC_DIR);
   for (const item of items) {

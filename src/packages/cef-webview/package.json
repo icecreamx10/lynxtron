@@ -32,9 +32,9 @@
   ],
   "dependencies": {
     "js-yaml": "^4.1.1",
+    "node-fetch": "3.3.2",
     "plist": "^3.1.0",
-    "extract-zip": "2.0.1",
-    "node-fetch": "3.3.2"
+    "zip-lib": "1.4.0"
   },
   "devDependencies": {
     "node-addon-api": "^7.0.0",
@@ -42,6 +42,6 @@
     "@lynx-js/lynxtron": "*"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
   }
 }

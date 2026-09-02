@@ -4,37 +4,36 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('js-yaml');
 const { makeUniversalApp } = require('@electron/universal');
+const {
+  prepareRuntimeConfig,
+  prepareUniversalPackaging,
+} = require('./runtime-config.js');
 
 const projectRoot = process.cwd();
 const configPath = path.join(projectRoot, 'electron-builder.yml');
 const tempConfigPath = path.join(projectRoot, 'config.json');
 
-function getLynxtronVersion() {
-  // New resolution logic that is compatible with packages using "exports"
+function getLynxtronPackage() {
   try {
-    // Resolve the package entry first, then locate its package.json beside it
-    const lynxtronEntryPath = require.resolve('@lynx-js/lynxtron', { paths: [projectRoot] });
-    const lynxtronPkgPath = path.join(path.dirname(lynxtronEntryPath), 'package.json');
-    if (fs.existsSync(lynxtronPkgPath)) {
-      const lynxtronPackageJson = JSON.parse(fs.readFileSync(lynxtronPkgPath, 'utf8'));
-      if (lynxtronPackageJson && lynxtronPackageJson.version) {
-        return lynxtronPackageJson.version;
-      }
-    } else {
-      // Look for package.json in the parent directory
-      const lynxtronPkgPath = path.join(path.dirname(path.dirname(lynxtronEntryPath)), 'package.json');
-      if (fs.existsSync(lynxtronPkgPath)) {
-        const lynxtronPackageJson = JSON.parse(fs.readFileSync(lynxtronPkgPath, 'utf8'));
-        if (lynxtronPackageJson && lynxtronPackageJson.version) {
-          return lynxtronPackageJson.version;
-        }
-      }
+    const packageJsonPath = require.resolve('@lynx-js/lynxtron/package.json', {
+      paths: [projectRoot],
+    });
+    const runtimeArtifactsPath = require.resolve(
+      '@lynx-js/lynxtron/runtime-artifacts',
+      { paths: [projectRoot] }
+    );
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    if (packageJson.version) {
+      return {
+        version: packageJson.version,
+        runtimeArtifacts: require(runtimeArtifactsPath),
+      };
     }
   } catch (e) {
-    console.warn('Could not resolve installed lynxtron version from node_modules.');
+    console.warn('Could not resolve the installed Lynxtron package.', e.message);
   }
 
-  throw new Error('Failed to determine lynxtron version. Please check your package.json or node_modules.');
+  throw new Error('Failed to determine Lynxtron version. Please check package.json and node_modules.');
 }
 
 
@@ -61,23 +60,21 @@ function isUniversalFromConfig(config) {
 }
 
 async function build() {
-  const args = process.argv.slice(2);
+  const rawArgs = process.argv.slice(2);
+  const { runtimeArtifacts } = getLynxtronPackage();
+  const { forwardedArgs } = runtimeArtifacts.parseRuntimeArguments(rawArgs);
 
-  let config = {};
-  if (fs.existsSync(configPath)) {
-    const yamlContent = fs.readFileSync(configPath, 'utf8');
-    config = yaml.load(yamlContent) || {};
-  }
+  const config = readConfig();
 
-  const isUniversal = args.includes('--universal') || isUniversalFromConfig(config);
+  const isUniversal = forwardedArgs.includes('--universal') || isUniversalFromConfig(config);
 
   try {
     if (isUniversal) {
-      await runBuild('--x64');
-      await runBuild('--arm64');
+      await runBuild('--x64', rawArgs);
+      await runBuild('--arm64', rawArgs);
       await makeUniversal();
     } else {
-      await runBuild();
+      await runBuild(undefined, rawArgs);
     }
   } finally {
     if (fs.existsSync(tempConfigPath)) {
@@ -86,15 +83,29 @@ async function build() {
   }
 }
 
-function runBuild(arch) {
-  return new Promise((resolve, reject) => {
-    let config = {};
-    if (fs.existsSync(configPath)) {
-      const yamlContent = fs.readFileSync(configPath, 'utf8');
-      config = yaml.load(yamlContent);
-    }
+function readConfig() {
+  if (!fs.existsSync(configPath)) {
+    return {};
+  }
+  return yaml.load(fs.readFileSync(configPath, 'utf8')) || {};
+}
 
-    const isUniversalBuild = process.argv.includes('--universal') || isUniversalFromConfig(config);
+function runBuild(arch, rawArgs) {
+  return new Promise((resolve, reject) => {
+    const config = readConfig();
+    const lynxtronPackage = getLynxtronPackage();
+    const prepared = prepareRuntimeConfig({
+      config,
+      args: rawArgs,
+      env: process.env,
+      arch,
+      platform: process.platform,
+      defaultArch: process.arch,
+      lynxtronVersion: lynxtronPackage.version,
+      runtimeArtifacts: lynxtronPackage.runtimeArtifacts,
+    });
+
+    const isUniversalBuild = prepared.forwardedArgs.includes('--universal') || isUniversalFromConfig(config);
 
     // If we are building a slice of a universal build, override the arch settings in the config
     if (isUniversalBuild && arch) {
@@ -127,36 +138,10 @@ function runBuild(arch) {
       }
     }
 
-    if (!config.electronDownload) {
-      const lynxtronVersion = getLynxtronVersion();
-      const effectiveVersion = config.electronVersion || lynxtronVersion;
-      if (!config.electronVersion) {
-        config.electronVersion = effectiveVersion;
-      }
-      const args = process.argv.slice(2);
-      let resolvedArch = arch ? arch.replace('--', '') : process.arch;
-      if (args.includes('--x64')) {
-        resolvedArch = 'x64';
-      } else if (args.includes('--arm64')) {
-        resolvedArch = 'arm64';
-      } else if (args.includes('--ia32')) {
-        resolvedArch = 'ia32';
-      }
-      const resolvedPlatform = process.platform;
-      const isMas = args.includes('--mas');
-      config.electronDownload = {
-        version: effectiveVersion,
-        mirror: '',
-        customDir: `v${effectiveVersion}`,
-        customFilename: isMas
-          ? `lynxtron-v${effectiveVersion}-${resolvedPlatform}-mas-${resolvedArch}.zip`
-          : `lynxtron-v${effectiveVersion}-${resolvedPlatform}-${resolvedArch}.zip`,
-      };
-    }
     fs.writeFileSync(tempConfigPath, JSON.stringify(config, null, 2));
 
     const electronBuilderPath = require.resolve('electron-builder/out/cli/cli.js');
-    const args = process.argv.slice(2).filter(arg => arg !== '--universal' && arg !== '--mas');
+    const args = prepared.forwardedArgs.filter(arg => arg !== '--universal' && arg !== '--mas');
     const finalArgs = ['-c', tempConfigPath, ...args];
     if (arch) {
       finalArgs.push(arch);
@@ -193,11 +178,17 @@ async function makeUniversal() {
     outAppPath,
   });
 
+  const packaging = prepareUniversalPackaging({
+    config,
+    configPath: tempConfigPath,
+    outAppPath,
+  });
+  fs.writeFileSync(tempConfigPath, JSON.stringify(packaging.config, null, 2));
+
   return new Promise((resolve, reject) => {
     const electronBuilderPath = require.resolve('electron-builder/out/cli/cli.js');
-    const args = ['--mac', '--prepackaged', outAppPath, '--universal'];
 
-    const child = spawn('node', [electronBuilderPath, ...args], {
+    const child = spawn('node', [electronBuilderPath, ...packaging.args], {
       stdio: 'inherit',
     });
 
