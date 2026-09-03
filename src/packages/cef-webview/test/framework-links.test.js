@@ -9,7 +9,9 @@ import path from 'node:path';
 import test from 'node:test';
 import { ensureDarwinFrameworkLinks } from '../scripts/framework-links.js';
 
-test('restores the standard CEF Framework links after npm packaging', async () => {
+const skipOnWindows = { skip: process.platform === 'win32' };
+
+test('restores the standard CEF Framework links after npm packaging', skipOnWindows, async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cef-framework-'));
   const frameworkRoot = path.join(
     tempDir,

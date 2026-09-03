@@ -64,6 +64,8 @@ if(NOT LYNX_LIBRARY_HEADERS_DIR)
   )
 endif()
 
+include("${LYNX_LIBRARY_HEADERS_DIR}/cmake/lynx-library-headers.cmake")
+
 execute_process(
   COMMAND node -p
           "require('node:path').dirname(require.resolve('node-addon-api/package.json'))"
@@ -109,7 +111,7 @@ target_include_directories(${CEF_EXTENSION_TARGET} PRIVATE
 
 add_dependencies(${CEF_EXTENSION_TARGET} cef_webview)
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-  target_link_libraries(${CEF_EXTENSION_TARGET} 
+  target_link_libraries(${CEF_EXTENSION_TARGET}
     cef_webview
     libcef_dll_wrapper 
     ${CEF_STANDARD_LIBS}
@@ -118,21 +120,22 @@ endif()
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   # Add libcef logical target
   ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
-  # Determine architecture
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(ARCHITECTURE "x64")
-  else()
-    set(ARCHITECTURE "x86")
-  endif()
-  
-  target_link_libraries(${CEF_EXTENSION_TARGET} 
+
+  add_executable(cef_subprocess WIN32 bindings/cef_subprocess_win.cc)
+  target_include_directories(cef_subprocess PRIVATE ${CEF_ROOT})
+  target_link_libraries(
+    cef_subprocess PRIVATE cef_webview libcef_dll_wrapper libcef_lib
+                           ${CEF_STANDARD_LIBS}
+  )
+
+  target_link_libraries(${CEF_EXTENSION_TARGET} PRIVATE
     cef_webview
     libcef_dll_wrapper 
     libcef_lib
     ${CEF_STANDARD_LIBS}
-    "${CMAKE_SOURCE_DIR}/node_modules/lynxtron/dist/win32/${ARCHITECTURE}/lynxtron/lxtn.dll.lib"
     imm32.lib
     )
+  lynx_link_lynxtron_runtime(${CEF_EXTENSION_TARGET})
 endif()
 
 set_target_properties(${CEF_EXTENSION_TARGET} PROPERTIES

@@ -7,3 +7,5 @@
 0008-BugFix-Copy-fetch-response-body-into-V8-sandbox.patch
 0009-Rename-x-webview-native-view-to-webview.patch
 0010-Add-CEF-webview-navigation-diagnostics.patch
+0011-Use-dedicated-CEF-subprocess-on-Windows.patch
+0012-Fix-CEF-OSR-rendering-on-Windows.patch
