@@ -47,8 +47,9 @@ export function applyLynxtronAutoLink(
 
   compiler.hooks?.beforeRun?.tap('LynxtronAutoLink', regenerate);
   compiler.hooks?.watchRun?.tap('LynxtronAutoLink', regenerate);
-  compiler.hooks?.beforeRun?.tap('LynxtronAutoLinkStage', stage);
-  compiler.hooks?.watchRun?.tap('LynxtronAutoLinkStage', stage);
+  // Rsbuild cleans the output directory after beforeRun. Stage native files
+  // after Rspack emits assets so the cleanup cannot remove them.
+  compiler.hooks?.afterEmit?.tap('LynxtronAutoLinkStage', stage);
 }
 
 function shouldInjectForTarget(target: unknown, force = false): boolean {
@@ -291,8 +292,7 @@ function createLynxtronAutoLinkStagePlugin(
         stageAutoLinkLibraries(root, compiler.options.output?.path, options);
       };
 
-      compiler.hooks?.beforeRun?.tap('LynxtronAutoLinkStage', stage);
-      compiler.hooks?.watchRun?.tap('LynxtronAutoLinkStage', stage);
+      compiler.hooks?.afterEmit?.tap('LynxtronAutoLinkStage', stage);
     },
   };
 }
