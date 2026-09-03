@@ -1231,6 +1231,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lynx-js/cef-webview@workspace:packages/cef-webview"
   dependencies:
+    "@lynx-js/lynx-library-headers": "workspace:*"
     "@lynx-js/lynxtron": "workspace:*"
     cmake-js: "npm:^7.4.0"
     js-yaml: "npm:^4.1.1"
@@ -1333,7 +1334,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lynx-js/lynx-library-headers@workspace:packages/lynx-library-headers":
+"@lynx-js/lynx-library-headers@workspace:*, @lynx-js/lynx-library-headers@workspace:packages/lynx-library-headers":
   version: 0.0.0-use.local
   resolution: "@lynx-js/lynx-library-headers@workspace:packages/lynx-library-headers"
   dependencies:

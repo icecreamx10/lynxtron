@@ -541,7 +541,7 @@ export function App() {
               <HomePage onConvertToLynxTab={openLynxJSWebsite} />
             )}
             {tab.input_value && (
-              <x-webview
+              <webview
                 className="webview-container"
                 id={`webview-${tab.id}`}
                 src={tab.input_value}
