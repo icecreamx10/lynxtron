@@ -37,21 +37,16 @@ export interface LynxtronAutoLinkOptions {
   warn?: (message: string) => void;
 }
 
-export interface LynxDesktopManifestEntry {
-  src?: string;
-  binary?: LynxNodeApiBinaryEntry | LynxNodeApiBinaryEntry[];
-}
-
 export interface LynxNodeApiManifestEntry {
   path?: string | string[];
-  binary?: LynxNodeApiBinaryEntry | LynxNodeApiBinaryEntry[];
+  binaries?: LynxtronRuntimeArtifact[];
+  frameworks?: LynxtronRuntimeArtifact[];
 }
 
-export interface LynxNodeApiBinaryEntry {
-  os?: string;
-  arch?: string;
-  arc?: string;
-  path?: string | string[];
+export interface LynxtronRuntimeArtifact {
+  os: string;
+  arch: string;
+  path: string | string[];
 }
 
 export type LynxtronAutoLinkStageMode = 'file' | 'package';
@@ -665,32 +660,11 @@ function getNodeApiManifestEntry(
     return undefined;
   }
 
-  const platformRecords = platforms as Record<string, unknown>;
-
-  const nodeApiEntry = matchNodeApiManifestEntry(
-    platformRecords['lynxtron'],
+  return matchNodeApiManifestEntry(
+    (platforms as Record<string, unknown>)['lynxtron'],
     platform,
     arch
   );
-
-  if (nodeApiEntry !== undefined) {
-    return nodeApiEntry;
-  }
-
-  for (const platformKey of getManifestKeys(platform, PLATFORM_ALIASES)) {
-    const matchedEntry = matchBinaryManifestEntry(
-      platformKey,
-      platformRecords[platformKey],
-      platform,
-      arch
-    );
-
-    if (matchedEntry !== undefined) {
-      return matchedEntry;
-    }
-  }
-
-  return undefined;
 }
 
 function matchNodeApiManifestEntry(
@@ -732,13 +706,11 @@ function matchBinaryManifestEntry(
     return undefined;
   }
 
-  const desktopEntry = platformEntry as LynxDesktopManifestEntry;
+  const nodeApiEntry = platformEntry as LynxNodeApiManifestEntry;
 
-  for (const binaryEntry of normalizeBinaryEntries(desktopEntry.binary)) {
+  for (const binaryEntry of normalizeRuntimeArtifacts(nodeApiEntry.binaries)) {
     const os = readOptionalString(binaryEntry.os);
-    const binaryArch =
-      readOptionalString(binaryEntry.arch) ??
-      readOptionalString(binaryEntry.arc);
+    const binaryArch = readOptionalString(binaryEntry.arch);
     const binaryPaths = normalizeLibraryPaths(binaryEntry.path);
 
     if (
@@ -762,13 +734,16 @@ function matchBinaryManifestEntry(
   return undefined;
 }
 
-function normalizeBinaryEntries(value: unknown): LynxNodeApiBinaryEntry[] {
-  const values = Array.isArray(value) ? value : [value];
-  const entries: LynxNodeApiBinaryEntry[] = [];
+function normalizeRuntimeArtifacts(value: unknown): LynxtronRuntimeArtifact[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
 
-  for (const item of values) {
+  const entries: LynxtronRuntimeArtifact[] = [];
+
+  for (const item of value) {
     if (item !== null && typeof item === 'object') {
-      entries.push(item as LynxNodeApiBinaryEntry);
+      entries.push(item as LynxtronRuntimeArtifact);
     }
   }
 

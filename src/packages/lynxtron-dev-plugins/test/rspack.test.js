@@ -33,20 +33,22 @@ async function verifySpaceContainingArguments(modulePath) {
     await fs.mkdir(binDir, { recursive: true });
     await fs.writeFile(
       helperPath,
-      "import fs from 'node:fs'; fs.writeFileSync(process.env.LYNXTRON_TEST_OUTPUT, JSON.stringify(process.argv.slice(2)));\n",
+      "import fs from 'node:fs'; fs.writeFileSync(process.env.LYNXTRON_TEST_OUTPUT, JSON.stringify(process.argv.slice(2)));\n"
     );
 
     if (process.platform === 'win32') {
       await fs.writeFile(
         path.join(binDir, 'lynxtron.cmd'),
-        `@echo off\r\n"${process.execPath}" "${helperPath}" %*\r\n`,
+        `@echo off\r\n"${process.execPath}" "${helperPath}" %*\r\n`
       );
     } else {
       const quoteForShell = (value) => `'${value.replaceAll("'", "'\\''")}'`;
       const shimPath = path.join(binDir, 'lynxtron');
       await fs.writeFile(
         shimPath,
-        `#!/bin/sh\nexec ${quoteForShell(process.execPath)} ${quoteForShell(helperPath)} "$@"\n`,
+        `#!/bin/sh\nexec ${quoteForShell(process.execPath)} ${quoteForShell(
+          helperPath
+        )} "$@"\n`
       );
       await fs.chmod(shimPath, 0o755);
     }
@@ -90,18 +92,20 @@ async function verifySpaceContainingArguments(modulePath) {
 
 test('rspack plugin resolves the npm shim and preserves spaces in arguments', async () => {
   await verifySpaceContainingArguments(
-    path.resolve(import.meta.dirname, '../dist/rspack.js'),
+    path.resolve(import.meta.dirname, '../dist/rspack.js')
   );
 });
 
 test('legacy plugin entry resolves the npm shim and preserves spaces in arguments', async () => {
   await verifySpaceContainingArguments(
-    path.resolve(import.meta.dirname, '../index.js'),
+    path.resolve(import.meta.dirname, '../index.js')
   );
 });
 
 test('AutoLink stages native packages after the output directory is cleaned', async () => {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lynxtron-autolink-'));
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), 'lynxtron-autolink-')
+  );
   const packageName = 'fixture-native-library';
   const packageRoot = path.join(tempDir, 'node_modules', packageName);
   const outputPath = path.join(tempDir, 'dist');
@@ -110,7 +114,7 @@ test('AutoLink stages native packages after the output directory is cleaned', as
     '.lynxtron',
     'native',
     'node_modules',
-    packageName,
+    packageName
   );
 
   try {
@@ -121,7 +125,7 @@ test('AutoLink stages native packages after the output directory is cleaned', as
         name: 'fixture-app',
         private: true,
         dependencies: { [packageName]: '1.0.0' },
-      }),
+      })
     );
     await fs.writeFile(
       path.join(packageRoot, 'package.json'),
@@ -134,21 +138,24 @@ test('AutoLink stages native packages after the output directory is cleaned', as
           './lynxtron': './index.cjs',
         },
         files: ['index.cjs', 'lynx.lib.json', 'dist/**/*'],
-      }),
+      })
     );
     await fs.writeFile(
       path.join(packageRoot, 'index.cjs'),
-      'module.exports = {};\n',
+      'module.exports = {};\n'
     );
     await fs.writeFile(
       path.join(packageRoot, 'lynx.lib.json'),
-      JSON.stringify({ platforms: { lynxtron: { path: 'dist' } } }),
+      JSON.stringify({ platforms: { lynxtron: { path: 'dist' } } })
     );
-    await fs.writeFile(path.join(packageRoot, 'dist', 'native.node'), 'fixture');
+    await fs.writeFile(
+      path.join(packageRoot, 'dist', 'native.node'),
+      'fixture'
+    );
     if (process.platform !== 'win32') {
       await fs.symlink(
         'native.node',
-        path.join(packageRoot, 'dist', 'native-link.node'),
+        path.join(packageRoot, 'dist', 'native-link.node')
       );
     }
 
@@ -191,16 +198,16 @@ test('AutoLink stages native packages after the output directory is cleaned', as
     assert.equal(
       await fs.readFile(
         path.join(stagedPackageRoot, 'dist', 'native.node'),
-        'utf8',
+        'utf8'
       ),
-      'fixture',
+      'fixture'
     );
     if (process.platform !== 'win32') {
       assert.equal(
         await fs.readlink(
-          path.join(stagedPackageRoot, 'dist', 'native-link.node'),
+          path.join(stagedPackageRoot, 'dist', 'native-link.node')
         ),
-        'native.node',
+        'native.node'
       );
     }
 
@@ -214,18 +221,96 @@ test('AutoLink stages native packages after the output directory is cleaned', as
     assert.equal(
       await fs.readFile(
         path.join(stagedPackageRoot, 'dist', 'native.node'),
-        'utf8',
+        'utf8'
       ),
-      'fixture',
+      'fixture'
     );
     if (process.platform !== 'win32') {
       assert.equal(
         await fs.readlink(
-          path.join(stagedPackageRoot, 'dist', 'native-link.node'),
+          path.join(stagedPackageRoot, 'dist', 'native-link.node')
         ),
-        'native.node',
+        'native.node'
       );
     }
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'lynxtron-schema-'));
+  const packageName = 'fixture-native-library';
+  const packageRoot = path.join(tempDir, 'node_modules', packageName);
+  const manifestPath = path.join(packageRoot, 'lynx.lib.json');
+
+  try {
+    await fs.mkdir(path.join(packageRoot, 'dist'), { recursive: true });
+    await fs.writeFile(
+      path.join(tempDir, 'package.json'),
+      JSON.stringify({
+        name: 'fixture-app',
+        private: true,
+        dependencies: { [packageName]: '1.0.0' },
+      })
+    );
+    await fs.writeFile(
+      path.join(packageRoot, 'package.json'),
+      JSON.stringify({ name: packageName, version: '1.0.0' })
+    );
+    await fs.writeFile(
+      path.join(packageRoot, 'dist', 'native.node'),
+      'fixture'
+    );
+
+    const { resolveLynxtronAutoLinks } = await import(
+      pathToFileURL(path.resolve(import.meta.dirname, '../dist/autolink.js'))
+        .href
+    );
+
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({
+        platforms: {
+          lynxtron: {
+            binaries: [
+              {
+                os: process.platform,
+                arch: process.arch,
+                path: 'dist/native.node',
+              },
+            ],
+          },
+        },
+      })
+    );
+
+    assert.deepEqual(
+      resolveLynxtronAutoLinks({ root: tempDir }).libraries.map(
+        ({ libs, stageMode }) => ({ libs, stageMode })
+      ),
+      [{ libs: ['dist/native.node'], stageMode: 'file' }]
+    );
+
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({
+        platforms: {
+          lynxtron: {
+            binary: {
+              os: process.platform,
+              arc: process.arch,
+              path: 'dist/native.node',
+            },
+          },
+        },
+      })
+    );
+
+    assert.equal(
+      resolveLynxtronAutoLinks({ root: tempDir }).libraries.length,
+      0
+    );
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }

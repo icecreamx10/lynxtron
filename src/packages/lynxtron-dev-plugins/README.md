@@ -92,7 +92,10 @@ Rsbuild. It includes Lynxtron AutoLink by default, so dependencies with
 automatically.
 
 For `lynxtron`, `lynx.lib.json` describes the native asset root, such as
-`dist`, while the package's `./lynxtron` export provides the JS entry.
+`dist`, while the package's `./lynxtron` export provides the JS entry. The
+prerelease artifact schema uses `binaries` and `frameworks` arrays; every item
+declares `os`, `arch`, and `path`. The legacy singular `binary` field and the
+misspelled `arc` field are not supported.
 
 ```ts
 import { pluginLynxtron } from '@lynx-js/lynxtron-dev-plugins/rspack';
