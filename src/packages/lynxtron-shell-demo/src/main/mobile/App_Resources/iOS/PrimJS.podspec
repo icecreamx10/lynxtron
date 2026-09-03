@@ -15,6 +15,7 @@ Pod::Spec.new do |spec|
     'GCC_PREPROCESSOR_DEFINITIONS' =>
       'OS_IOS=1 JSC_OBJC_API_ENABLED=1 ENABLE_CODECACHE ENABLE_VIRTUAL_STACK=1',
     'CLANG_CXX_LANGUAGE_STANDARD' => 'gnu++17',
+    'USE_HEADERMAP' => 'NO',
     'HEADER_SEARCH_PATHS' =>
       '"$(PODS_TARGET_SRCROOT)/src" "$(PODS_TARGET_SRCROOT)/src/interpreter"'
   }
@@ -42,7 +43,13 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'napi' do |napi|
     napi.pod_target_xcconfig = {
-      'HEADER_SEARCH_PATHS' => '"${PODS_ROOT}/PrimJS"'
+      'HEADER_SEARCH_PATHS' =>
+        '"${PODS_ROOT}/PrimJS/src/napi" ' \
+        '"${PODS_ROOT}/PrimJS/src/napi/common" ' \
+        '"${PODS_ROOT}/PrimJS/src/napi/env" ' \
+        '"${PODS_ROOT}/PrimJS/src/napi/jsc" ' \
+        '"${PODS_ROOT}/PrimJS/src/napi/quickjs" ' \
+        '"${PODS_ROOT}/PrimJS"'
     }
 
     napi.subspec 'core' do |subspec|
