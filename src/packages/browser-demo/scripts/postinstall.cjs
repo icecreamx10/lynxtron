@@ -48,14 +48,9 @@ async function main() {
   const lynxtronRoot = path.dirname(
     require.resolve('@lynx-js/lynxtron/package.json', { paths: [cwd] })
   );
-  const src = path.join(
-    cefWebviewRoot,
-    'dist',
-    'darwin',
-    arch,
-    'frameworks'
-  );
+  const src = path.join(cefWebviewRoot, 'dist', 'darwin', arch, 'frameworks');
   const destinations = [
+    path.join(lynxtronRoot, 'dist', 'Lynxtron.app', 'Contents', 'Frameworks'),
     path.join(
       lynxtronRoot,
       'dist',

@@ -146,12 +146,37 @@ test('AutoLink stages native packages after the output directory is cleaned', as
     );
     await fs.writeFile(
       path.join(packageRoot, 'lynx.lib.json'),
-      JSON.stringify({ platforms: { lynxtron: { path: 'dist' } } })
+      JSON.stringify({
+        platforms: {
+          lynxtron: {
+            binaries: [
+              {
+                os: process.platform,
+                arch: process.arch,
+                path: 'dist/native.node',
+              },
+            ],
+            frameworks: [
+              {
+                os: process.platform,
+                arch: process.arch,
+                path: 'dist',
+              },
+            ],
+          },
+        },
+      })
     );
     await fs.writeFile(
       path.join(packageRoot, 'dist', 'native.node'),
       'fixture'
     );
+    await fs.writeFile(
+      path.join(packageRoot, 'dist', 'native-win.node'),
+      'fixture-win32'
+    );
+    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks'));
+    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks-win'));
     if (process.platform !== 'win32') {
       await fs.symlink(
         'native.node',
@@ -279,6 +304,12 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
       path.join(packageRoot, 'dist', 'native.node'),
       'fixture'
     );
+    await fs.writeFile(
+      path.join(packageRoot, 'dist', 'native-win.node'),
+      'fixture-win32'
+    );
+    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks'));
+    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks-win'));
 
     const { resolveLynxtronAutoLinks } = await import(
       pathToFileURL(path.resolve(import.meta.dirname, '../dist/autolink.js'))
@@ -297,6 +328,13 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
                 path: 'dist/native.node',
               },
             ],
+            frameworks: [
+              {
+                os: process.platform,
+                arch: process.arch,
+                path: 'dist/frameworks',
+              },
+            ],
           },
         },
       })
@@ -304,9 +342,63 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
 
     assert.deepEqual(
       resolveLynxtronAutoLinks({ root: tempDir }).libraries.map(
-        ({ libs, stageMode }) => ({ libs, stageMode })
+        ({ frameworks, libs, stageMode }) => ({ frameworks, libs, stageMode })
       ),
-      [{ libs: ['dist/native.node'], stageMode: 'file' }]
+      [
+        {
+          frameworks: ['dist/frameworks'],
+          libs: ['dist/native.node'],
+          stageMode: 'package',
+        },
+      ]
+    );
+
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({
+        platforms: {
+          lynxtron: {
+            binaries: [
+              {
+                os: 'darwin',
+                arch: 'arm64',
+                path: 'dist/native.node',
+              },
+              {
+                os: 'win32',
+                arch: 'x64',
+                path: 'dist/native-win.node',
+              },
+            ],
+            frameworks: [
+              {
+                os: 'win32',
+                arch: 'x64',
+                path: 'dist/frameworks-win',
+              },
+            ],
+          },
+        },
+      })
+    );
+
+    assert.deepEqual(
+      resolveLynxtronAutoLinks({
+        root: tempDir,
+        platform: 'win32',
+        arch: 'x64',
+      }).libraries.map(({ frameworks, libs, stageMode }) => ({
+        frameworks,
+        libs,
+        stageMode,
+      })),
+      [
+        {
+          frameworks: ['dist/frameworks-win'],
+          libs: ['dist/native-win.node'],
+          stageMode: 'package',
+        },
+      ]
     );
 
     await fs.writeFile(
@@ -322,6 +414,16 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
           },
         },
       })
+    );
+
+    assert.equal(
+      resolveLynxtronAutoLinks({ root: tempDir }).libraries.length,
+      0
+    );
+
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({ platforms: { lynxtron: { path: 'dist' } } })
     );
 
     assert.equal(

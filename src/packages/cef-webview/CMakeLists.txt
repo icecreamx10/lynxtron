@@ -136,6 +136,22 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     imm32.lib
     )
   lynx_link_lynxtron_runtime(${CEF_EXTENSION_TARGET})
+
+  # Keep the CEF runtime next to the Node addon. The Windows loader resolves
+  # libcef.dll and its dependencies from this directory, and CEF resolves its
+  # resource packs and locales from the same module directory by default.
+  COPY_FILES(
+    "${CEF_EXTENSION_TARGET}"
+    "${CEF_BINARY_FILES}"
+    "${CEF_BINARY_DIR}"
+    "$<TARGET_FILE_DIR:${CEF_EXTENSION_TARGET}>"
+  )
+  COPY_FILES(
+    "${CEF_EXTENSION_TARGET}"
+    "${CEF_RESOURCE_FILES}"
+    "${CEF_RESOURCE_DIR}"
+    "$<TARGET_FILE_DIR:${CEF_EXTENSION_TARGET}>"
+  )
 endif()
 
 set_target_properties(${CEF_EXTENSION_TARGET} PROPERTIES

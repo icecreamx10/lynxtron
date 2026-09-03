@@ -38,7 +38,6 @@ export interface LynxtronAutoLinkOptions {
 }
 
 export interface LynxNodeApiManifestEntry {
-  path?: string | string[];
   binaries?: LynxtronRuntimeArtifact[];
   frameworks?: LynxtronRuntimeArtifact[];
 }
@@ -61,6 +60,8 @@ export interface LynxtronAutoLinkLibrary {
   archKey: string;
   libs: string[];
   libPaths: string[];
+  frameworks: string[];
+  frameworkPaths: string[];
   stageMode: LynxtronAutoLinkStageMode;
   nodeModulesPath: string;
   warnings: string[];
@@ -104,6 +105,7 @@ interface MatchedManifestEntry {
   platformKey: string;
   archKey: string;
   libs: string[];
+  frameworks: string[];
   stageMode: LynxtronAutoLinkStageMode;
 }
 
@@ -160,13 +162,25 @@ export function resolveLynxtronAutoLinks(
       )
     );
 
-    if (libs.length === 0) {
-      continue;
-    }
-
     const libPaths = libs.map((libraryPath) =>
       path.join(resolvedPackage.packageRoot, libraryPath)
     );
+    const frameworks = matchedEntry.frameworks.map((frameworkPath) =>
+      expandManifestVariables(
+        frameworkPath,
+        platform,
+        arch,
+        matchedEntry.platformKey,
+        matchedEntry.archKey
+      )
+    );
+    const frameworkPaths = frameworks.map((frameworkPath) =>
+      path.join(resolvedPackage.packageRoot, frameworkPath)
+    );
+
+    if (libs.length === 0 && frameworks.length === 0) {
+      continue;
+    }
     const libraryWarnings: string[] = [];
 
     if (matchedEntry.stageMode === 'package') {
@@ -189,6 +203,18 @@ export function resolveLynxtronAutoLinks(
         if (!fs.existsSync(libPath)) {
           libraryWarnings.push(
             `Lynxtron AutoLink package "${dependencyName}" declares Lynxtron assets ${libs[index]}, but the path does not exist.`
+          );
+        }
+      }
+
+      for (const [index, frameworkPath] of frameworkPaths.entries()) {
+        if (hasGlob(frameworks[index])) {
+          continue;
+        }
+
+        if (!fs.existsSync(frameworkPath)) {
+          libraryWarnings.push(
+            `Lynxtron AutoLink package "${dependencyName}" declares Framework assets ${frameworks[index]}, but the path does not exist.`
           );
         }
       }
@@ -221,6 +247,8 @@ export function resolveLynxtronAutoLinks(
       archKey: matchedEntry.archKey,
       libs,
       libPaths,
+      frameworks,
+      frameworkPaths,
       stageMode: matchedEntry.stageMode,
       nodeModulesPath: packageNameToNodeModulesPath(dependencyName),
       warnings: libraryWarnings,
@@ -683,57 +711,53 @@ function matchNodeApiManifestEntry(
   }
 
   const nodeApiEntry = platformEntry as LynxNodeApiManifestEntry;
-  const paths = normalizeLibraryPaths(nodeApiEntry.path);
-
-  if (paths.length > 0) {
-    return {
-      platformKey: 'lynxtron',
-      archKey: runtimeArch,
-      libs: paths,
-      stageMode: 'package',
-    };
-  }
-
-  return matchBinaryManifestEntry(
-    'lynxtron',
-    platformEntry,
+  const binaryMatch = matchRuntimeArtifactEntry(
+    nodeApiEntry.binaries,
     runtimePlatform,
     runtimeArch
   );
-}
+  const frameworkMatch = matchRuntimeArtifactEntry(
+    nodeApiEntry.frameworks,
+    runtimePlatform,
+    runtimeArch
+  );
 
-function matchBinaryManifestEntry(
-  platformKey: string,
-  platformEntry: unknown,
-  runtimePlatform: string,
-  runtimeArch: string
-): MatchedManifestEntry | undefined {
-  if (platformEntry === null || typeof platformEntry !== 'object') {
+  if (binaryMatch === undefined && frameworkMatch === undefined) {
     return undefined;
   }
 
-  const nodeApiEntry = platformEntry as LynxNodeApiManifestEntry;
+  return {
+    platformKey: 'lynxtron',
+    archKey: binaryMatch?.archKey ?? frameworkMatch!.archKey,
+    libs: binaryMatch?.paths ?? [],
+    frameworks: frameworkMatch?.paths ?? [],
+    stageMode: 'package',
+  };
+}
 
-  for (const binaryEntry of normalizeRuntimeArtifacts(nodeApiEntry.binaries)) {
-    const os = readOptionalString(binaryEntry.os);
-    const binaryArch = readOptionalString(binaryEntry.arch);
-    const binaryPaths = normalizeLibraryPaths(binaryEntry.path);
+function matchRuntimeArtifactEntry(
+  artifacts: unknown,
+  runtimePlatform: string,
+  runtimeArch: string
+): { archKey: string; paths: string[] } | undefined {
+  for (const artifact of normalizeRuntimeArtifacts(artifacts)) {
+    const os = readOptionalString(artifact.os);
+    const artifactArch = readOptionalString(artifact.arch);
+    const artifactPaths = normalizeLibraryPaths(artifact.path);
 
     if (
       os === undefined ||
-      binaryArch === undefined ||
-      binaryPaths.length === 0 ||
+      artifactArch === undefined ||
+      artifactPaths.length === 0 ||
       !matchesManifestKey(runtimePlatform, os, PLATFORM_ALIASES) ||
-      !matchesManifestKey(runtimeArch, binaryArch, ARCH_ALIASES)
+      !matchesManifestKey(runtimeArch, artifactArch, ARCH_ALIASES)
     ) {
       continue;
     }
 
     return {
-      platformKey,
-      archKey: binaryArch,
-      libs: binaryPaths,
-      stageMode: 'file',
+      archKey: artifactArch,
+      paths: artifactPaths,
     };
   }
 

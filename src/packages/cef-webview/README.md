@@ -19,6 +19,10 @@ Enable the Lynxtron autolink plugin in your application build. AutoLink requires
 addon so its static Lynx registrations run during startup. CEF itself is
 initialized only when you call `initialize()`.
 
+The package selects its native addon from `lynx.lib.json`. On Windows, it also
+ships the CEF DLLs, resource packs, and locales next to that addon and adds the
+selected runtime directory to the DLL search path before loading it.
+
 ```ts
 import cefWebview from '@lynx-js/cef-webview/lynxtron';
 
@@ -54,6 +58,7 @@ Once initialized, you can use the `<webview>` element in your Lynx templates:
 ## Dependencies
 
 - **Runtime Dependencies:**
+
   - js-yaml
   - plist
 

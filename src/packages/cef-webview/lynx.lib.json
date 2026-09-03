@@ -1,7 +1,6 @@
 {
   "platforms": {
     "lynxtron": {
-      "path": "dist",
       "binaries": [
         {
           "os": "darwin",
@@ -12,6 +11,11 @@
           "os": "darwin",
           "arch": "x64",
           "path": "dist/darwin/x64/cef_extension.node"
+        },
+        {
+          "os": "win32",
+          "arch": "x64",
+          "path": "dist/win32/x64/cef_extension.node"
         }
       ],
       "frameworks": [
