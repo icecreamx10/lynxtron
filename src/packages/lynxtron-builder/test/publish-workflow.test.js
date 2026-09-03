@@ -10,6 +10,17 @@ const workflow = yaml.load(workflowSource);
 const { jobs } = workflow;
 const ciWorkflowPath = path.resolve(__dirname, '../../../../.github/workflows/ci.yml');
 const ciJobs = yaml.load(fs.readFileSync(ciWorkflowPath, 'utf8')).jobs;
+const windowsBuildActionPath = path.resolve(
+  __dirname,
+  '../../../../.github/actions/windows-lynxtron-build/action.yml'
+);
+const windowsBuildAction = yaml.load(
+  fs.readFileSync(windowsBuildActionPath, 'utf8')
+);
+const windowsEnvSetupSource = fs.readFileSync(
+  path.resolve(__dirname, '../../../../lynxtron_tools/envsetup.ps1'),
+  'utf8'
+);
 
 test('one version and one release gate both runtime variants', () => {
   assert.deepEqual(Object.keys(jobs['get-version'].outputs).sort(), ['tag', 'version']);
@@ -134,6 +145,28 @@ test('pull request CI builds every published architecture', () => {
   );
   assert.deepEqual(ciJobs['linux-lynxtron-build'].strategy.matrix.arch, ['x64']);
   assert.deepEqual(ciJobs['windows-lynxtron-build'].strategy.matrix.arch, ['x64']);
+});
+
+test('Windows builds use and validate the pinned resource compiler', () => {
+  const buildStep = windowsBuildAction.runs.steps.find(
+    (step) => step.name === 'Build Lynxtron'
+  );
+  const buildScript = buildStep.run;
+  const compilerPath = 'build\\toolchain\\win\\rc\\win\\rc.exe';
+
+  assert.ok(windowsEnvSetupSource.includes(compilerPath));
+  assert.match(windowsEnvSetupSource, /Test-Path -LiteralPath \$resourceCompiler -PathType Leaf/);
+  assert.match(windowsEnvSetupSource, /\$env:PATH = "\$resourceCompilerDir;\$env:PATH"/);
+
+  assert.ok(buildScript.includes(compilerPath));
+  assert.match(buildScript, /Test-Path -LiteralPath \$resourceCompiler -PathType Leaf/);
+  assert.match(buildScript, /Get-Command rc\.exe -CommandType Application -ErrorAction Stop/);
+  assert.match(buildScript, /StringComparison\]::OrdinalIgnoreCase/);
+  assert.ok(
+    buildScript.indexOf('Get-Command rc.exe') <
+      buildScript.indexOf('ninja.exe -C out\\Release lynxtron_app'),
+    'resource compiler validation must run before the expensive build'
+  );
 });
 
 test('npm packages are published once without a legacy dev release channel', () => {
