@@ -38,14 +38,14 @@ export interface LynxtronAutoLinkOptions {
 }
 
 export interface LynxNodeApiManifestEntry {
-  binaries?: LynxtronRuntimeArtifact[];
-  frameworks?: LynxtronRuntimeArtifact[];
+  targets?: LynxtronRuntimeTarget[];
 }
 
-export interface LynxtronRuntimeArtifact {
+export interface LynxtronRuntimeTarget {
   os: string;
   arch: string;
-  path: string | string[];
+  binaries?: string[];
+  frameworks?: string[];
 }
 
 export type LynxtronAutoLinkStageMode = 'file' | 'package';
@@ -711,69 +711,72 @@ function matchNodeApiManifestEntry(
   }
 
   const nodeApiEntry = platformEntry as LynxNodeApiManifestEntry;
-  const binaryMatch = matchRuntimeArtifactEntry(
-    nodeApiEntry.binaries,
+  const target = matchRuntimeTarget(
+    nodeApiEntry.targets,
     runtimePlatform,
     runtimeArch
   );
-  const frameworkMatch = matchRuntimeArtifactEntry(
-    nodeApiEntry.frameworks,
-    runtimePlatform,
-    runtimeArch
-  );
-
-  if (binaryMatch === undefined && frameworkMatch === undefined) {
+  if (target === undefined) {
     return undefined;
   }
 
   return {
     platformKey: 'lynxtron',
-    archKey: binaryMatch?.archKey ?? frameworkMatch!.archKey,
-    libs: binaryMatch?.paths ?? [],
-    frameworks: frameworkMatch?.paths ?? [],
+    archKey: target.archKey,
+    libs: normalizeLibraryPaths(target.entry.binaries),
+    frameworks: normalizeLibraryPaths(target.entry.frameworks),
     stageMode: 'package',
   };
 }
 
-function matchRuntimeArtifactEntry(
-  artifacts: unknown,
+function matchRuntimeTarget(
+  targets: unknown,
   runtimePlatform: string,
   runtimeArch: string
-): { archKey: string; paths: string[] } | undefined {
-  for (const artifact of normalizeRuntimeArtifacts(artifacts)) {
-    const os = readOptionalString(artifact.os);
-    const artifactArch = readOptionalString(artifact.arch);
-    const artifactPaths = normalizeLibraryPaths(artifact.path);
+): { archKey: string; entry: LynxtronRuntimeTarget } | undefined {
+  const matches: Array<{
+    archKey: string;
+    entry: LynxtronRuntimeTarget;
+  }> = [];
+
+  for (const target of normalizeRuntimeTargets(targets)) {
+    const os = readOptionalString(target.os);
+    const targetArch = readOptionalString(target.arch);
 
     if (
       os === undefined ||
-      artifactArch === undefined ||
-      artifactPaths.length === 0 ||
+      targetArch === undefined ||
       !matchesManifestKey(runtimePlatform, os, PLATFORM_ALIASES) ||
-      !matchesManifestKey(runtimeArch, artifactArch, ARCH_ALIASES)
+      !matchesManifestKey(runtimeArch, targetArch, ARCH_ALIASES)
     ) {
       continue;
     }
 
-    return {
-      archKey: artifactArch,
-      paths: artifactPaths,
-    };
+    matches.push({
+      archKey: targetArch,
+      entry: target,
+    });
   }
 
-  return undefined;
+  if (matches.length > 1) {
+    throw new Error(
+      `Lynxtron AutoLink found duplicate targets for ${runtimePlatform}/${runtimeArch}.`
+    );
+  }
+
+  return matches[0];
 }
 
-function normalizeRuntimeArtifacts(value: unknown): LynxtronRuntimeArtifact[] {
+function normalizeRuntimeTargets(value: unknown): LynxtronRuntimeTarget[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
-  const entries: LynxtronRuntimeArtifact[] = [];
+  const entries: LynxtronRuntimeTarget[] = [];
 
   for (const item of value) {
     if (item !== null && typeof item === 'object') {
-      entries.push(item as LynxtronRuntimeArtifact);
+      entries.push(item as LynxtronRuntimeTarget);
     }
   }
 

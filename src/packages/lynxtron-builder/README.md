@@ -18,3 +18,16 @@ lynxtron-builder --lynxtron-runtime=devtool --mac
 ```
 
 Selection precedence is command line, `LYNXTRON_RUNTIME_VARIANT`, `electron-builder.yml`, then the `release` default. An explicitly configured `electronDownload` remains authoritative.
+
+## AutoLink native packages
+
+`pluginLynxtron()` stages matching native packages under
+`.lynxtron/native`. The builder includes that directory in the final app and
+keeps it outside ASAR so native addons and adjacent runtime files remain
+loadable.
+
+For macOS targets, Framework directories declared by the selected
+`platforms.lynxtron.targets` record are copied into `Contents/Frameworks` with
+their symbolic links preserved. For Windows targets, the staged package stays
+under `app.asar.unpacked`; DLLs, resource packs, and locales can remain next to
+the selected `.node` addon.

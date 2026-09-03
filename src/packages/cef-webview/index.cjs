@@ -1,17 +1,22 @@
 const path = require('path');
 const manifest = require('./lynx.lib.json');
 
-const binary = manifest.platforms.lynxtron.binaries.find(
+const target = manifest.platforms.lynxtron.targets.find(
   ({ os, arch }) => os === process.platform && arch === process.arch
 );
 
-if (!binary) {
+if (!target) {
   throw new Error(
     `@lynx-js/cef-webview does not provide a binary for ${process.platform}/${process.arch}`
   );
 }
 
-const binaryPaths = Array.isArray(binary.path) ? binary.path : [binary.path];
+const binaryPaths = target.binaries;
+if (!Array.isArray(binaryPaths) || binaryPaths.length === 0) {
+  throw new Error(
+    `@lynx-js/cef-webview does not provide a binary for ${process.platform}/${process.arch}`
+  );
+}
 if (process.platform === 'win32') {
   const runtimeDirectory = path.dirname(
     path.resolve(__dirname, binaryPaths[0])

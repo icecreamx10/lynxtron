@@ -149,18 +149,12 @@ test('AutoLink stages native packages after the output directory is cleaned', as
       JSON.stringify({
         platforms: {
           lynxtron: {
-            binaries: [
+            targets: [
               {
                 os: process.platform,
                 arch: process.arch,
-                path: 'dist/native.node',
-              },
-            ],
-            frameworks: [
-              {
-                os: process.platform,
-                arch: process.arch,
-                path: 'dist',
+                binaries: ['dist/native.node'],
+                frameworks: ['dist'],
               },
             ],
           },
@@ -321,18 +315,12 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
       JSON.stringify({
         platforms: {
           lynxtron: {
-            binaries: [
+            targets: [
               {
                 os: process.platform,
                 arch: process.arch,
-                path: 'dist/native.node',
-              },
-            ],
-            frameworks: [
-              {
-                os: process.platform,
-                arch: process.arch,
-                path: 'dist/frameworks',
+                binaries: ['dist/native.node'],
+                frameworks: ['dist/frameworks'],
               },
             ],
           },
@@ -358,23 +346,17 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
       JSON.stringify({
         platforms: {
           lynxtron: {
-            binaries: [
+            targets: [
               {
                 os: 'darwin',
                 arch: 'arm64',
-                path: 'dist/native.node',
+                binaries: ['dist/native.node'],
               },
               {
                 os: 'win32',
                 arch: 'x64',
-                path: 'dist/native-win.node',
-              },
-            ],
-            frameworks: [
-              {
-                os: 'win32',
-                arch: 'x64',
-                path: 'dist/frameworks-win',
+                binaries: ['dist/native-win.node'],
+                frameworks: ['dist/frameworks-win'],
               },
             ],
           },

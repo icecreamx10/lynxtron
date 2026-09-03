@@ -55,16 +55,16 @@ test('loads the Windows x64 binary selected by lynx.lib.json', () => {
     manifest: {
       platforms: {
         lynxtron: {
-          binaries: [
+          targets: [
             {
               os: 'darwin',
               arch: 'arm64',
-              path: 'dist/darwin/arm64/cef_extension.node',
+              binaries: ['dist/darwin/arm64/cef_extension.node'],
             },
             {
               os: 'win32',
               arch: 'x64',
-              path: 'dist/win32/x64/cef_extension.node',
+              binaries: ['dist/win32/x64/cef_extension.node'],
             },
           ],
         },
@@ -95,11 +95,11 @@ test('fails clearly when the installed package has no matching binary', () => {
         manifest: {
           platforms: {
             lynxtron: {
-              binaries: [
+              targets: [
                 {
                   os: 'darwin',
                   arch: 'arm64',
-                  path: 'dist/darwin/arm64/cef_extension.node',
+                  binaries: ['dist/darwin/arm64/cef_extension.node'],
                 },
               ],
             },
