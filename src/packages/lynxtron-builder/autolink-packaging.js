@@ -15,6 +15,9 @@ function prepareAutoLinkPackaging({ config, projectRoot, platform, arch }) {
     return { config, libraries, appDirectory };
   }
 
+  if (config.files === undefined) {
+    config.files = ['**/*'];
+  }
   appendUnique(
     config,
     'files',

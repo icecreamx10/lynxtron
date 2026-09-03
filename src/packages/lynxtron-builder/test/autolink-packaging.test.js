@@ -88,6 +88,23 @@ test('packages Windows AutoLink addon and adjacent CEF runtime files unpacked', 
   );
 });
 
+test('preserves electron-builder default app files when files is omitted', () => {
+  const fixture = createFixture();
+  const config = {
+    directories: { app: 'dist/desktop' },
+    asar: true,
+  };
+
+  prepareAutoLinkPackaging({
+    config,
+    projectRoot: fixture.projectRoot,
+    platform: 'win32',
+    arch: 'x64',
+  });
+
+  assert.deepEqual(config.files, ['**/*', '.lynxtron/native/**/*']);
+});
+
 test('fails before packaging when the target architecture artifact is absent', () => {
   const fixture = createFixture();
   fs.rmSync(
