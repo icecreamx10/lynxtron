@@ -1,0 +1,164 @@
+diff --git a/core/runtime/common/napi/shim/shim_napi_env_jsc.h b/core/runtime/common/napi/shim/shim_napi_env_jsc.h
+index 29f4e8f8c..4b530c80a 100644
+--- a/core/runtime/common/napi/shim/shim_napi_env_jsc.h
++++ b/core/runtime/common/napi/shim/shim_napi_env_jsc.h
+@@ -6,7 +6,7 @@
+ #define CORE_RUNTIME_COMMON_NAPI_SHIM_SHIM_NAPI_ENV_JSC_H_
+
+ #ifdef OS_IOS
+-#include <napi_env_jsc.h>
++#include <PrimJS/napi_env_jsc.h>
+ #else
+ #include "third_party/napi/include/napi_env_jsc.h"
+ #endif
+diff --git a/core/runtime/common/napi/shim/shim_napi_env_quickjs.h b/core/runtime/common/napi/shim/shim_napi_env_quickjs.h
+index b833bfac5..ad82535f7 100644
+--- a/core/runtime/common/napi/shim/shim_napi_env_quickjs.h
++++ b/core/runtime/common/napi/shim/shim_napi_env_quickjs.h
+@@ -6,7 +6,7 @@
+ #define CORE_RUNTIME_COMMON_NAPI_SHIM_SHIM_NAPI_ENV_QUICKJS_H_
+
+ #ifdef OS_IOS
+-#include <napi_env_quickjs.h>
++#include <PrimJS/napi_env_quickjs.h>
+ #else
+ #include "third_party/napi/include/napi_env_quickjs.h"
+ #endif
+diff --git a/platform/darwin/ios/lynx/hero_transitions/LynxHeroTransition.m b/platform/darwin/ios/lynx/hero_transitions/LynxHeroTransition.m
+index 60089a635..baf8bd9cc 100644
+--- a/platform/darwin/ios/lynx/hero_transitions/LynxHeroTransition.m
++++ b/platform/darwin/ios/lynx/hero_transitions/LynxHeroTransition.m
+@@ -4,6 +4,7 @@
+
+ #import <Lynx/CALayer+LynxHeroTransition.h>
+ #import <Lynx/LynxHeroTransition.h>
++#import <Lynx/LynxUIKitAPIAdapter.h>
+ #import <Lynx/UIView+LynxHeroTransition.h>
+ #import <Lynx/UIViewController+LynxHeroTransition.h>
+
+@@ -346,7 +347,7 @@ - (void)applySharedElementEnter:(NSString *)shareTag LynxUI:(LynxUI *)lynxUI {
+   [lynxUI.animationManager setAnimation:lynxUI.view.lynxHeroConfig.enterTransitionName];
+   pair.duration = lynxUI.view.lynxHeroConfig.enterTransitionName.duration;
+   if (!pair.crossPage) {
+-    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
++    UIWindow *window = [LynxUIKitAPIAdapter getKeyWindow];
+     CGPoint fromPoint = [window convertPoint:fromView.layer.position fromView:fromView.superview];
+     [window addSubview:toView];
+     toView.frame = fromView.frame;
+@@ -366,7 +367,7 @@ - (void)applySharedElementExit:(NSString *)shareTag LynxUI:(LynxUI *)lynxUI {
+   [lynxUI.animationManager setAnimation:lynxUI.view.lynxHeroConfig.enterTransitionName];
+   pair.duration = lynxUI.view.lynxHeroConfig.enterTransitionName.duration;
+   if (!pair.crossPage) {
+-    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
++    UIWindow *window = [LynxUIKitAPIAdapter getKeyWindow];
+     CGPoint fromPoint = [window convertPoint:fromView.layer.position fromView:fromView.superview];
+     [window addSubview:toView];
+     toView.frame = fromView.frame;
+diff --git a/platform/darwin/ios/lynx/shadow_node/text/LynxTextLayoutManager.m b/platform/darwin/ios/lynx/shadow_node/text/LynxTextLayoutManager.m
+index d37048019..4b8a60504 100644
+--- a/platform/darwin/ios/lynx/shadow_node/text/LynxTextLayoutManager.m
++++ b/platform/darwin/ios/lynx/shadow_node/text/LynxTextLayoutManager.m
+@@ -11,6 +11,10 @@
+ #import <Lynx/LynxUIUnitUtils.h>
+ #import "LynxTraceEventDef.h"
+
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
++#pragma clang diagnostic ignored "-Wdeprecated-implementations"
++
+ @implementation LynxTextLayoutManager
+
+ - (void)drawTextClipMaskWithFont:(UIFont *_Nonnull)font
+@@ -281,3 +285,5 @@ - (void)drawBackgroundForGlyphRange:(NSRange)glyphsToShow atPoint:(CGPoint)origi
+ }
+
+ @end
++
++#pragma clang diagnostic pop
+diff --git a/platform/darwin/ios/lynx/ui/LynxUI.m b/platform/darwin/ios/lynx/ui/LynxUI.m
+index 8e05d1325..e60f9557d 100644
+--- a/platform/darwin/ios/lynx/ui/LynxUI.m
++++ b/platform/darwin/ios/lynx/ui/LynxUI.m
+@@ -46,6 +46,7 @@
+ #import <Lynx/LynxUIScrollViewInternal.h>
+ #import <Lynx/LynxUIScroller.h>
+ #import <Lynx/LynxUIUnitUtils.h>
++#import <Lynx/LynxUIKitAPIAdapter.h>
+ #import <Lynx/LynxUnitUtils.h>
+ #import <Lynx/LynxVersion.h>
+ #import <Lynx/LynxVersionUtils.h>
+@@ -1476,7 +1477,7 @@ - (TransOffset)getTransformValueWithLeft:(float)left
+                                      top:(float)top
+                                   bottom:(float)bottom {
+   TransOffset res;
+-  UIView* root_view = [[UIApplication sharedApplication] keyWindow];
++  UIView* root_view = [LynxUIKitAPIAdapter getKeyWindow];
+   CALayer* layer = self.view.layer;
+   CGFloat width = layer.bounds.size.width;
+   CGFloat height = layer.bounds.size.height;
+diff --git a/platform/darwin/ios/lynx/ui/text/LynxTextView.m b/platform/darwin/ios/lynx/ui/text/LynxTextView.m
+index 7f340ded0..f5bb38f7c 100644
+--- a/platform/darwin/ios/lynx/ui/text/LynxTextView.m
++++ b/platform/darwin/ios/lynx/ui/text/LynxTextView.m
+@@ -558,7 +558,10 @@ - (void)hideMenu {
+   if (@available(iOS 13.0, *)) {
+     [menu hideMenuFromView:self];
+   } else {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+     [menu setMenuVisible:NO animated:YES];
++#pragma clang diagnostic pop
+   }
+   self.menuShowing = NO;
+ }
+@@ -592,8 +595,11 @@ - (void)showMenu {
+   if (@available(iOS 13.0, *)) {
+     [menu showMenuFromView:self rect:rect];
+   } else {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+     [menu setTargetRect:rect inView:self];
+     [menu setMenuVisible:YES animated:YES];
++#pragma clang diagnostic pop
+   }
+   [menu update];
+
+diff --git a/third_party/binding/napi/shim/shim_napi.h b/third_party/binding/napi/shim/shim_napi.h
+index fab00fd25..3877b4d3c 100644
+--- a/third_party/binding/napi/shim/shim_napi.h
++++ b/third_party/binding/napi/shim/shim_napi.h
+@@ -6,7 +6,7 @@
+ #define BINDING_NAPI_SHIM_SHIM_NAPI_H_
+
+ #ifdef OS_IOS
+-#include "napi.h"
++#include <PrimJS/napi.h>
+ #else
+ #include "third_party/napi/include/napi.h"
+ #endif
+diff --git a/third_party/binding/napi/shim/shim_napi_env.h b/third_party/binding/napi/shim/shim_napi_env.h
+index af3eedcbd..e7f52c4ee 100644
+--- a/third_party/binding/napi/shim/shim_napi_env.h
++++ b/third_party/binding/napi/shim/shim_napi_env.h
+@@ -6,7 +6,7 @@
+ #define BINDING_NAPI_SHIM_SHIM_NAPI_ENV_H_
+
+ #ifdef OS_IOS
+-#include "napi_env.h"
++#include <PrimJS/napi_env.h>
+ #else
+ #include "third_party/napi/include/napi_env.h"
+ #endif
+diff --git a/third_party/binding/napi/shim/shim_napi_runtime.h b/third_party/binding/napi/shim/shim_napi_runtime.h
+index ff3e63d07..99027c162 100644
+--- a/third_party/binding/napi/shim/shim_napi_runtime.h
++++ b/third_party/binding/napi/shim/shim_napi_runtime.h
+@@ -6,7 +6,7 @@
+ #define BINDING_NAPI_SHIM_SHIM_NAPI_RUNTIME_H_
+
+ #ifdef OS_IOS
+-#include "napi_runtime.h"
++#include <PrimJS/napi_runtime.h>
+ #else
+ #include "third_party/napi/include/napi_runtime.h"
+ #endif

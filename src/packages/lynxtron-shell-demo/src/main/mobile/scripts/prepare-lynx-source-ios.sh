@@ -27,6 +27,17 @@ if [[ "${actual_revision}" != "${pinned_revision}" ]]; then
   exit 1
 fi
 
+ios_source_patch="${script_dir}/lynx-ios-source.patch"
+if git -C "${lynx_root}" apply --reverse --check "${ios_source_patch}" >/dev/null 2>&1; then
+  echo "Lynx iOS source patch is already applied."
+elif git -C "${lynx_root}" apply --check "${ios_source_patch}"; then
+  git -C "${lynx_root}" apply "${ios_source_patch}"
+  echo "Applied Lynx iOS source patch."
+else
+  echo "Lynx iOS source patch does not apply cleanly to ${pinned_revision}." >&2
+  exit 1
+fi
+
 export PYENV_VERSION="${PYENV_VERSION:-3.9.25}"
 
 (
