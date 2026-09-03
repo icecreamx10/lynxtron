@@ -435,14 +435,23 @@ function normalizePackageFileEntry(entry: string): string | undefined {
 }
 
 function copyPath(sourcePath: string, targetPath: string): void {
-  if (!fs.existsSync(sourcePath)) {
+  let stat: fs.Stats;
+  try {
+    stat = fs.lstatSync(sourcePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
+
+  if (stat.isSymbolicLink()) {
+    copySymbolicLink(sourcePath, targetPath, path.dirname(sourcePath));
     return;
   }
 
-  const stat = fs.statSync(sourcePath);
-
   if (stat.isDirectory()) {
-    copyDirectory(sourcePath, targetPath);
+    copyDirectory(sourcePath, targetPath, sourcePath);
     return;
   }
 
@@ -450,7 +459,11 @@ function copyPath(sourcePath: string, targetPath: string): void {
   fs.copyFileSync(sourcePath, targetPath);
 }
 
-function copyDirectory(sourcePath: string, targetPath: string): void {
+function copyDirectory(
+  sourcePath: string,
+  targetPath: string,
+  sourceRoot = sourcePath
+): void {
   if (shouldSkipPackageEntry(path.basename(sourcePath))) {
     return;
   }
@@ -466,12 +479,37 @@ function copyDirectory(sourcePath: string, targetPath: string): void {
     const targetEntry = path.join(targetPath, entry.name);
 
     if (entry.isDirectory()) {
-      copyDirectory(sourceEntry, targetEntry);
+      copyDirectory(sourceEntry, targetEntry, sourceRoot);
+    } else if (entry.isSymbolicLink()) {
+      copySymbolicLink(sourceEntry, targetEntry, sourceRoot);
     } else if (entry.isFile()) {
       fs.mkdirSync(path.dirname(targetEntry), { recursive: true });
       fs.copyFileSync(sourceEntry, targetEntry);
     }
   }
+}
+
+function copySymbolicLink(
+  sourcePath: string,
+  targetPath: string,
+  sourceRoot: string
+): void {
+  const linkTarget = fs.readlinkSync(sourcePath);
+  const resolvedTarget = path.resolve(path.dirname(sourcePath), linkTarget);
+  const relativeTarget = path.relative(sourceRoot, resolvedTarget);
+
+  if (
+    path.isAbsolute(linkTarget) ||
+    relativeTarget === '..' ||
+    relativeTarget.startsWith(`..${path.sep}`)
+  ) {
+    throw new Error(
+      `Lynxtron AutoLink refuses to stage symbolic link outside its package: ${sourcePath} -> ${linkTarget}`
+    );
+  }
+
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  fs.symlinkSync(linkTarget, targetPath);
 }
 
 function shouldSkipPackageEntry(name: string): boolean {

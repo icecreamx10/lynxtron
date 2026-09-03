@@ -16,7 +16,8 @@
   },
   "scripts": {
     "build": "yarn workspace @lynx-js/lynx-library-headers copy-headers && cmake-js build && node scripts/stage-build.js",
-    "postinstall": "node scripts/install.js"
+    "postinstall": "node scripts/install.js",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
     "lynx",

@@ -145,6 +145,12 @@ test('AutoLink stages native packages after the output directory is cleaned', as
       JSON.stringify({ platforms: { lynxtron: { path: 'dist' } } }),
     );
     await fs.writeFile(path.join(packageRoot, 'dist', 'native.node'), 'fixture');
+    if (process.platform !== 'win32') {
+      await fs.symlink(
+        'native.node',
+        path.join(packageRoot, 'dist', 'native-link.node'),
+      );
+    }
 
     const callbacks = new Map();
     const hook = (name) => ({
@@ -189,6 +195,14 @@ test('AutoLink stages native packages after the output directory is cleaned', as
       ),
       'fixture',
     );
+    if (process.platform !== 'win32') {
+      assert.equal(
+        await fs.readlink(
+          path.join(stagedPackageRoot, 'dist', 'native-link.node'),
+        ),
+        'native.node',
+      );
+    }
 
     // Watch rebuilds must restore staging after another output clean as well.
     callbacks.get('watchRun')();
@@ -204,6 +218,14 @@ test('AutoLink stages native packages after the output directory is cleaned', as
       ),
       'fixture',
     );
+    if (process.platform !== 'win32') {
+      assert.equal(
+        await fs.readlink(
+          path.join(stagedPackageRoot, 'dist', 'native-link.node'),
+        ),
+        'native.node',
+      );
+    }
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }

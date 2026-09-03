@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ensureDarwinFrameworkLinks } from './framework-links.js';
 
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const platform = process.env.npm_config_platform || process.platform;
@@ -21,6 +22,7 @@ if (platform === 'darwin') {
     path.join(outputRoot, 'frameworks'),
     { recursive: true, force: true, verbatimSymlinks: true }
   );
+  ensureDarwinFrameworkLinks(outputRoot);
 }
 
 console.log(`staged cef-webview build at ${outputRoot}`);
