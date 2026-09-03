@@ -110,6 +110,23 @@ test('macOS releases publish both universal slice architectures', () => {
   );
 });
 
+test('macOS publish jobs preserve sibling architectures and cache CEF dependencies', () => {
+  assert.equal(jobs['build-macos'].strategy['fail-fast'], false);
+  assert.equal(jobs['build-cef-webview-macos'].strategy['fail-fast'], false);
+
+  const cefJob = jobs['build-cef-webview-macos'];
+  const cacheStep = cefJob.steps.find(
+    (step) => step.uses === './lynxtron/.github/actions/common-deps'
+  );
+  assert.ok(cacheStep, 'CEF builds must restore and save the Habitat cache');
+  assert.equal(cacheStep.with['run-habitat-sync'], 'false');
+
+  const prepareStep = cefJob.steps.find((step) => step.name === 'Prepare environment');
+  assert.equal(prepareStep.env.HABITAT_CONCURRENCY, 2);
+  assert.match(prepareStep.run, /for attempt in 1 2 3/);
+  assert.match(prepareStep.run, /10 \* \(2 \*\* \(attempt - 1\)\)/);
+});
+
 test('pull request CI builds every published architecture', () => {
   assert.deepEqual(
     new Set(ciJobs['macos-lynxtron-build'].strategy.matrix.arch),

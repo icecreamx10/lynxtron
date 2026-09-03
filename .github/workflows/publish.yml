@@ -47,6 +47,7 @@ jobs:
     timeout-minutes: 120
     runs-on: lynx-darwin-15.6.1-medium
     strategy:
+      fail-fast: false
       matrix:
         arch: [arm64, x64]
     steps:
@@ -530,6 +531,7 @@ jobs:
     timeout-minutes: 120
     runs-on: lynx-darwin-15.6.1-medium
     strategy:
+      fail-fast: false
       matrix:
         arch: [arm64, x64]
     steps:
@@ -538,10 +540,16 @@ jobs:
         with:
           path: lynxtron
           ref: ${{ github.ref_name }}
+      - name: Install Common Dependencies
+        uses: ./lynxtron/.github/actions/common-deps
+        with:
+          run-habitat-sync: 'false'
       - name: Prepare environment
         shell: bash
+        env:
+          HABITAT_CONCURRENCY: 2
         run: |
-          set -x
+          set -euxo pipefail
           cd ${{ github.workspace }}/lynxtron
           git config --global http.version HTTP/1.1
           git config --global user.name "Lynxtron Scripts"
@@ -552,7 +560,18 @@ jobs:
           python3 setup_deps.py
           # Sync CEF binary distribution required by cef-webview CMakeLists.
           cd ${{ github.workspace }}/lynxtron/src
-          "${{ github.workspace }}/lynxtron/lynxtron_tools/hab" sync . -f --no-history --target extension --target-only
+          for attempt in 1 2 3; do
+            if "${{ github.workspace }}/lynxtron/lynxtron_tools/hab" sync . -f --no-history --target extension --target-only; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "sync CEF extension dependencies failed after 3 attempts"
+              exit 1
+            fi
+            delay=$((10 * (2 ** (attempt - 1))))
+            echo "sync CEF extension dependencies failed (attempt $attempt/3); retrying in $delay seconds..."
+            sleep "$delay"
+          done
       - uses: actions/setup-node@v4
         with:
           node-version: 24.14.1
