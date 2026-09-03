@@ -333,7 +333,9 @@ import __path from 'node:path';
 
 const __lynxtronAutoLinkRequire = typeof __non_webpack_require__ === 'function'
   ? __non_webpack_require__
-  : __createRequire(import.meta.url);
+  : __createRequire(
+      typeof __filename === 'string' ? __filename : import.meta.url,
+    );
 const __lynxtronAutoLinkNodeApiAddons = new Set();
 
 const __lynxtronAutoLinkLibraries = [
@@ -453,9 +455,13 @@ import { fileURLToPath as __fileURLToPath } from 'node:url';
 
 const __lynxtronAutoLinkRequire = typeof __non_webpack_require__ === 'function'
   ? __non_webpack_require__
-  : __createRequire(import.meta.url);
+  : __createRequire(
+      typeof __filename === 'string' ? __filename : import.meta.url,
+    );
 const __lynxtronAutoLinkSourceDir = __path.dirname(
-  __fileURLToPath(import.meta.url),
+  typeof __filename === 'string'
+    ? __filename
+    : __fileURLToPath(import.meta.url),
 );
 const __lynxtronAutoLinkNodeApiAddons = new Set();
 const __lynxtronAutoLinkLibraries = [

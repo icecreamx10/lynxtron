@@ -186,6 +186,23 @@ test('AutoLink stages native packages after the output directory is cleaned', as
     );
     pluginLynxtron({ isDev: false }).apply(compiler);
 
+    const generatedDir = path.join(
+      tempDir,
+      'node_modules',
+      '.cache',
+      'lynxtron-dev-plugins',
+      'autolink'
+    );
+    const generatedFiles = await fs.readdir(generatedDir);
+    for (const generatedFile of generatedFiles.filter((file) =>
+      file.endsWith('.mjs')
+    )) {
+      assert.match(
+        await fs.readFile(path.join(generatedDir, generatedFile), 'utf8'),
+        /typeof __filename === 'string'/
+      );
+    }
+
     callbacks.get('beforeRun')();
     await assert.rejects(fs.access(stagedPackageRoot));
 

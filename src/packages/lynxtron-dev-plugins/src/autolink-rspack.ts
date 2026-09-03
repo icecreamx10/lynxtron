@@ -175,7 +175,9 @@ import __path from 'node:path';
 import { fileURLToPath as __fileURLToPath } from 'node:url';
 
 const __lynxtronAutoLinkProxySourceDir = __path.dirname(
-  __fileURLToPath(import.meta.url),
+  typeof __filename === 'string'
+    ? __filename
+    : __fileURLToPath(import.meta.url),
 );
 const __lynxtronAutoLinkProxyPackageRoot = ${JSON.stringify(
     normalizeStagedPath(library.stagedPath)
