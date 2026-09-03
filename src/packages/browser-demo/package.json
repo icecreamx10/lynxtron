@@ -16,7 +16,7 @@
   },
   "private": true,
   "devDependencies": {
-    "@lynx-js/cef-webview": "0.0.10",
+    "@lynx-js/cef-webview": "workspace:*",
     "@lynx-js/lynx-core": "latest",
     "@lynx-js/lynxtron": "workspace:*",
     "@lynx-js/lynxtron-builder": "workspace:*",
