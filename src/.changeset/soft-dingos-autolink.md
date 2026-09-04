@@ -6,8 +6,8 @@
 
 Declare the CEF binary and framework payloads in `lynx.lib.json`, and make
 Lynxtron AutoLink consume only the prerelease target-based artifact schema.
-Each `os`/`arch` target owns its `binaries` and optional `resources` and
-`frameworks`. AutoLink stages only the selected target's declared artifacts.
+Each `os`/`arch` target owns its `files` and optional `frameworks`. AutoLink
+stages only the selected target's declared artifacts.
 Publish the Windows x64 CEF addon and runtime payload alongside the macOS
 artifacts.
 

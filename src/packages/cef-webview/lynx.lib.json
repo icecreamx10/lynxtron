@@ -5,20 +5,20 @@
         {
           "os": "darwin",
           "arch": "arm64",
-          "binaries": ["dist/darwin/arm64/cef_extension.node"],
+          "files": ["dist/darwin/arm64/cef_extension.node"],
           "frameworks": ["dist/darwin/arm64/frameworks"]
         },
         {
           "os": "darwin",
           "arch": "x64",
-          "binaries": ["dist/darwin/x64/cef_extension.node"],
+          "files": ["dist/darwin/x64/cef_extension.node"],
           "frameworks": ["dist/darwin/x64/frameworks"]
         },
         {
           "os": "win32",
           "arch": "x64",
-          "binaries": ["dist/win32/x64/cef_extension.node"],
-          "resources": [
+          "files": [
+            "dist/win32/x64/cef_extension.node",
             "dist/win32/x64/cef_subprocess.exe",
             "dist/win32/x64/chrome_100_percent.pak",
             "dist/win32/x64/chrome_200_percent.pak",

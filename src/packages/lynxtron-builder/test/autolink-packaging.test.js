@@ -69,13 +69,10 @@ test('packages Windows AutoLink addon and adjacent CEF runtime files unpacked', 
 
   assert.equal(result.libraries.length, 1);
   assert.equal(
-    result.libraries[0].binaries[0].path,
+    result.libraries[0].files[0].path,
     'dist/win32/x64/cef_extension.node'
   );
-  assert.equal(
-    result.libraries[0].resources[0].path,
-    'dist/win32/x64/libcef.dll'
-  );
+  assert.equal(result.libraries[0].files[1].path, 'dist/win32/x64/libcef.dll');
   assert.ok(config.files.includes('.lynxtron/native/**/*'));
   assert.ok(config.asarUnpack.includes('.lynxtron/native/**/*'));
   assert.equal(config.extraFiles, undefined);
@@ -130,6 +127,29 @@ test('fails before packaging when the target architecture artifact is absent', (
         arch: 'x64',
       }),
     /does not exist for darwin\/x64/
+  );
+});
+
+test('rejects legacy Lynxtron artifact categories', () => {
+  const fixture = createFixture();
+  const manifestPath = path.join(fixture.packageRoot, 'lynx.lib.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const target = manifest.platforms.lynxtron.targets.find(
+    ({ os, arch }) => os === 'win32' && arch === 'x64'
+  );
+  target.binaries = target.files;
+  delete target.files;
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+  assert.throws(
+    () =>
+      prepareAutoLinkPackaging({
+        config: { directories: { app: 'dist/desktop' } },
+        projectRoot: fixture.projectRoot,
+        platform: 'win32',
+        arch: 'x64',
+      }),
+    /does not support binary, binaries, or resources.*use files/
   );
 });
 
@@ -193,20 +213,22 @@ function createFixture() {
             {
               os: 'darwin',
               arch: 'arm64',
-              binaries: ['dist/darwin/arm64/cef_extension.node'],
+              files: ['dist/darwin/arm64/cef_extension.node'],
               frameworks: ['dist/darwin/arm64/frameworks'],
             },
             {
               os: 'darwin',
               arch: 'x64',
-              binaries: ['dist/darwin/x64/cef_extension.node'],
+              files: ['dist/darwin/x64/cef_extension.node'],
               frameworks: ['dist/darwin/x64/frameworks'],
             },
             {
               os: 'win32',
               arch: 'x64',
-              binaries: ['dist/win32/x64/cef_extension.node'],
-              resources: ['dist/win32/x64/libcef.dll'],
+              files: [
+                'dist/win32/x64/cef_extension.node',
+                'dist/win32/x64/libcef.dll',
+              ],
             },
           ],
         },

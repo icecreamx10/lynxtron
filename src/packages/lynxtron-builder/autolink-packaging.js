@@ -91,20 +91,18 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
     }
     const target = targets[0];
 
-    const binaries = resolveArtifactPaths({
-      paths: target.binaries,
+    if ('binary' in target || 'binaries' in target || 'resources' in target) {
+      throw new Error(
+        `${manifestPath} does not support binary, binaries, or resources in Lynxtron targets; use files`
+      );
+    }
+
+    const files = resolveArtifactPaths({
+      paths: target.files,
       packageRoot,
       platform,
       arch,
-      field: 'binaries',
-      manifestPath,
-    });
-    const resources = resolveArtifactPaths({
-      paths: target.resources,
-      packageRoot,
-      platform,
-      arch,
-      field: 'resources',
+      field: 'files',
       manifestPath,
     });
     const frameworks = resolveArtifactPaths({
@@ -116,11 +114,7 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
       manifestPath,
     });
 
-    if (
-      binaries.length === 0 &&
-      resources.length === 0 &&
-      frameworks.length === 0
-    ) {
+    if (files.length === 0 && frameworks.length === 0) {
       throw new Error(
         `${manifestPath} has no Lynxtron artifacts for ${platform}/${arch}`
       );
@@ -129,8 +123,7 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
     libraries.push({
       packageRoot,
       manifestPath,
-      binaries,
-      resources,
+      files,
       frameworks,
     });
   }

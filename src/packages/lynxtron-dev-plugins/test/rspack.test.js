@@ -158,8 +158,7 @@ test('AutoLink stages native packages after the output directory is cleaned', as
               {
                 os: process.platform,
                 arch: process.arch,
-                binaries: ['dist/native.node'],
-                resources: ['dist/runtime'],
+                files: ['dist/native.node', 'dist/runtime'],
                 frameworks: ['dist/frameworks'],
               },
             ],
@@ -341,8 +340,7 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
               {
                 os: process.platform,
                 arch: process.arch,
-                binaries: ['dist/native.node'],
-                resources: ['../outside', 'dist/frameworks'],
+                files: ['../outside', 'dist/native.node', 'dist/frameworks'],
                 frameworks: ['dist/frameworks'],
               },
             ],
@@ -353,13 +351,12 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
 
     assert.deepEqual(
       resolveLynxtronAutoLinks({ root: tempDir }).libraries.map(
-        ({ frameworks, libs, resources }) => ({ frameworks, libs, resources })
+        ({ files, frameworks }) => ({ files, frameworks })
       ),
       [
         {
+          files: ['dist/native.node', 'dist/frameworks'],
           frameworks: ['dist/frameworks'],
-          libs: ['dist/native.node'],
-          resources: ['dist/frameworks'],
         },
       ]
     );
@@ -373,13 +370,12 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
               {
                 os: 'darwin',
                 arch: 'arm64',
-                binaries: ['dist/native.node'],
+                files: ['dist/native.node'],
               },
               {
                 os: 'win32',
                 arch: 'x64',
-                binaries: ['dist/native-win.node'],
-                resources: ['dist/frameworks-win'],
+                files: ['dist/native-win.node', 'dist/frameworks-win'],
                 frameworks: ['dist/frameworks-win'],
               },
             ],
@@ -393,18 +389,38 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
         root: tempDir,
         platform: 'win32',
         arch: 'x64',
-      }).libraries.map(({ frameworks, libs, resources }) => ({
+      }).libraries.map(({ files, frameworks }) => ({
+        files,
         frameworks,
-        libs,
-        resources,
       })),
       [
         {
+          files: ['dist/native-win.node', 'dist/frameworks-win'],
           frameworks: ['dist/frameworks-win'],
-          libs: ['dist/native-win.node'],
-          resources: ['dist/frameworks-win'],
         },
       ]
+    );
+
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({
+        platforms: {
+          lynxtron: {
+            targets: [
+              {
+                os: process.platform,
+                arch: process.arch,
+                binaries: ['dist/native.node'],
+              },
+            ],
+          },
+        },
+      })
+    );
+
+    assert.throws(
+      () => resolveLynxtronAutoLinks({ root: tempDir }),
+      /does not support binary, binaries, or resources.*use files/
     );
 
     await fs.writeFile(

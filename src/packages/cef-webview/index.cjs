@@ -11,8 +11,10 @@ if (!target) {
   );
 }
 
-const binaryPaths = target.binaries;
-if (!Array.isArray(binaryPaths) || binaryPaths.length === 0) {
+const binaryPaths = Array.isArray(target.files)
+  ? target.files.filter((file) => path.extname(file) === '.node')
+  : [];
+if (binaryPaths.length === 0) {
   throw new Error(
     `@lynx-js/cef-webview does not provide a binary for ${process.platform}/${process.arch}`
   );

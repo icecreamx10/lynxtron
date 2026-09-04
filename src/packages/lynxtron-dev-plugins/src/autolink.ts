@@ -44,8 +44,7 @@ export interface LynxNodeApiManifestEntry {
 export interface LynxtronRuntimeTarget {
   os: string;
   arch: string;
-  binaries?: string[];
-  resources?: string[];
+  files?: string[];
   frameworks?: string[];
 }
 
@@ -57,10 +56,8 @@ export interface LynxtronAutoLinkLibrary {
   manifest: Record<string, unknown>;
   platformKey: string;
   archKey: string;
-  libs: string[];
-  libPaths: string[];
-  resources: string[];
-  resourcePaths: string[];
+  files: string[];
+  filePaths: string[];
   frameworks: string[];
   frameworkPaths: string[];
   entry: string;
@@ -104,8 +101,7 @@ interface PackageJson {
 interface MatchedManifestEntry {
   platformKey: string;
   archKey: string;
-  libs: string[];
-  resources: string[];
+  files: string[];
   frameworks: string[];
 }
 
@@ -152,9 +148,9 @@ export function resolveLynxtronAutoLinks(
       continue;
     }
 
-    const libs = matchedEntry.libs.map((libraryPath) =>
+    const files = matchedEntry.files.map((filePath) =>
       expandManifestVariables(
-        libraryPath,
+        filePath,
         platform,
         arch,
         matchedEntry.platformKey,
@@ -162,20 +158,8 @@ export function resolveLynxtronAutoLinks(
       )
     );
 
-    const libPaths = libs.map((libraryPath) =>
-      path.join(resolvedPackage.packageRoot, libraryPath)
-    );
-    const resources = matchedEntry.resources.map((resourcePath) =>
-      expandManifestVariables(
-        resourcePath,
-        platform,
-        arch,
-        matchedEntry.platformKey,
-        matchedEntry.archKey
-      )
-    );
-    const resourcePaths = resources.map((resourcePath) =>
-      path.join(resolvedPackage.packageRoot, resourcePath)
+    const filePaths = files.map((filePath) =>
+      path.join(resolvedPackage.packageRoot, filePath)
     );
     const frameworks = matchedEntry.frameworks.map((frameworkPath) =>
       expandManifestVariables(
@@ -190,11 +174,7 @@ export function resolveLynxtronAutoLinks(
       path.join(resolvedPackage.packageRoot, frameworkPath)
     );
 
-    if (
-      libs.length === 0 &&
-      resources.length === 0 &&
-      frameworks.length === 0
-    ) {
+    if (files.length === 0 && frameworks.length === 0) {
       continue;
     }
     const libraryWarnings: string[] = [];
@@ -223,16 +203,9 @@ export function resolveLynxtronAutoLinks(
 
     validateArtifactPaths({
       dependencyName,
-      kind: 'binary',
-      paths: libs,
-      absolutePaths: libPaths,
-      warnings: libraryWarnings,
-    });
-    validateArtifactPaths({
-      dependencyName,
-      kind: 'resource',
-      paths: resources,
-      absolutePaths: resourcePaths,
+      kind: 'file',
+      paths: files,
+      absolutePaths: filePaths,
       warnings: libraryWarnings,
     });
     validateArtifactPaths({
@@ -256,10 +229,8 @@ export function resolveLynxtronAutoLinks(
       manifest,
       platformKey: matchedEntry.platformKey,
       archKey: matchedEntry.archKey,
-      libs,
-      libPaths,
-      resources,
-      resourcePaths,
+      files,
+      filePaths,
       frameworks,
       frameworkPaths,
       entry,
@@ -621,11 +592,20 @@ function matchNodeApiManifestEntry(
     return undefined;
   }
 
+  if (
+    'binary' in target.entry ||
+    'binaries' in target.entry ||
+    'resources' in target.entry
+  ) {
+    throw new Error(
+      'Lynxtron AutoLink does not support binary, binaries, or resources in targets; use files.'
+    );
+  }
+
   return {
     platformKey: 'lynxtron',
     archKey: target.archKey,
-    libs: normalizeLibraryPaths(target.entry.binaries),
-    resources: normalizeLibraryPaths(target.entry.resources),
+    files: normalizeLibraryPaths(target.entry.files),
     frameworks: normalizeLibraryPaths(target.entry.frameworks),
   };
 }
@@ -750,8 +730,7 @@ function getAutoLinkPackageFiles(library: LynxtronAutoLinkLibrary): string[] {
         'package.json',
         'lynx.lib.json',
         library.entry,
-        ...library.libs,
-        ...library.resources,
+        ...library.files,
         ...library.frameworks,
       ]
         .filter((entry) => entry.length > 0 && !hasGlob(entry))

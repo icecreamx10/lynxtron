@@ -62,12 +62,15 @@ test('loads the Windows x64 binary selected by lynx.lib.json', () => {
             {
               os: 'darwin',
               arch: 'arm64',
-              binaries: ['dist/darwin/arm64/cef_extension.node'],
+              files: ['dist/darwin/arm64/cef_extension.node'],
             },
             {
               os: 'win32',
               arch: 'x64',
-              binaries: ['dist/win32/x64/cef_extension.node'],
+              files: [
+                'dist/win32/x64/cef_extension.node',
+                'dist/win32/x64/libcef.dll',
+              ],
             },
           ],
         },
@@ -102,7 +105,7 @@ test('fails clearly when the installed package has no matching binary', () => {
                 {
                   os: 'darwin',
                   arch: 'arm64',
-                  binaries: ['dist/darwin/arm64/cef_extension.node'],
+                  files: ['dist/darwin/arm64/cef_extension.node'],
                 },
               ],
             },
@@ -122,8 +125,9 @@ test('Windows builds use the Lynxtron import helper and stage the CEF runtime', 
   assert.deepEqual(
     manifest.platforms.lynxtron.targets.find(
       ({ os, arch }) => os === 'win32' && arch === 'x64'
-    ).resources,
+    ).files,
     [
+      'dist/win32/x64/cef_extension.node',
       'dist/win32/x64/cef_subprocess.exe',
       'dist/win32/x64/chrome_100_percent.pak',
       'dist/win32/x64/chrome_200_percent.pak',
