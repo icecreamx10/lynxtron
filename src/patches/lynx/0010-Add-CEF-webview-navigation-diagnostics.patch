@@ -84,16 +84,3 @@ index 510d8274..df9b7030 100644
    lynx::pub::LynxValue detail(lynx::pub::LynxValue::kCreateAsMapTag);
    detail.SetProperty("errorCode", lynx::pub::LynxValue(int(errorCode)));
    detail.SetProperty("errorMsg", lynx::pub::LynxValue(errorText.ToString()));
-diff --git a/platform/embedder/plugin/cef/src/cef_webview_constants.h b/platform/embedder/plugin/cef/src/cef_webview_constants.h
-index 9d607455..ba0e7fe7 100644
---- a/platform/embedder/plugin/cef/src/cef_webview_constants.h
-+++ b/platform/embedder/plugin/cef/src/cef_webview_constants.h
-@@ -43,7 +43,7 @@ static const char kMethodReload[] = "reload";
- static const char kJsExecutionContext[] = "<host>";
- 
- // Log
--static constexpr const char* LOG_TAG = "cef-x-webview";
-+static constexpr const char* LOG_TAG = "cef-webview";
- // Trace
- static constexpr const char* CEF_TRACE_CATEGORY = "cef";
- 

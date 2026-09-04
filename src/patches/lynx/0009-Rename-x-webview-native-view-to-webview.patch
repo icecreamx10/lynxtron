@@ -18,3 +18,12 @@ index 000000000..000000000 100644
    LYNX_CAPI_TRACE_END(CEF_TRACE_CATEGORY, TRACE_NAME_REGISTER_VIEW);
  }
  
+diff --git a/platform/embedder/plugin/cef/src/cef_webview_constants.h b/platform/embedder/plugin/cef/src/cef_webview_constants.h
+index 9d607455..ba0e7fe7 100644
+--- a/platform/embedder/plugin/cef/src/cef_webview_constants.h
++++ b/platform/embedder/plugin/cef/src/cef_webview_constants.h
+@@ -45,3 +45,3 @@
+ // Log
+-static constexpr const char* LOG_TAG = "cef-x-webview";
++static constexpr const char* LOG_TAG = "cef-webview";
+ // Trace
