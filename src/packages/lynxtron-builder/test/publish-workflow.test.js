@@ -23,7 +23,12 @@ const windowsEnvSetupSource = fs.readFileSync(
 );
 
 test('one version and one release gate both runtime variants', () => {
-  assert.deepEqual(Object.keys(jobs['get-version'].outputs).sort(), ['tag', 'version']);
+  assert.deepEqual(Object.keys(jobs['get-version'].outputs).sort(), [
+    'prerelease',
+    'source_sha',
+    'tag',
+    'version',
+  ]);
   assert.equal(jobs['create-release-dev'], undefined);
   assert.equal(jobs['publish-npm-dev'], undefined);
   assert.deepEqual(
@@ -38,6 +43,47 @@ test('one version and one release gate both runtime variants', () => {
       'build-linux-devtool',
       'build-windows-devtool',
     ])
+  );
+});
+
+test('every publish job uses the immutable revision resolved from the requested source ref', () => {
+  const sourceInput = workflow.on.workflow_dispatch.inputs.source_ref;
+  assert.equal(sourceInput.required, true);
+  assert.equal(sourceInput.default, 'main');
+
+  const resolveStep = jobs['get-version'].steps.find(
+    (step) => step.name === 'Resolve source revision'
+  );
+  assert.equal(resolveStep.with.ref, '${{ github.event.inputs.source_ref }}');
+
+  const checkoutJobs = [
+    'build-macos',
+    'build-linux',
+    'build-windows',
+    'build-macos-devtool',
+    'build-linux-devtool',
+    'build-windows-devtool',
+    'build-cef-webview-macos',
+    'publish-npm',
+  ];
+  for (const jobName of checkoutJobs) {
+    const checkoutStep = jobs[jobName].steps.find(
+      (step) => step.uses === 'actions/checkout@v4.2.2'
+    );
+    assert.equal(
+      checkoutStep.with.ref,
+      '${{ needs.get-version.outputs.source_sha }}',
+      `${jobName} must checkout the resolved source revision`
+    );
+  }
+
+  const releaseStep = jobs['create-release'].steps.find(
+    (step) => step.uses === 'ncipollo/release-action@v1'
+  );
+  assert.equal(releaseStep.with.commit, '${{ needs.get-version.outputs.source_sha }}');
+  assert.equal(
+    releaseStep.with.prerelease,
+    "${{ needs.get-version.outputs.prerelease == 'true' }}"
   );
 });
 
