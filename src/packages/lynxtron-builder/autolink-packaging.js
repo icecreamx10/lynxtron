@@ -31,6 +31,14 @@ function prepareAutoLinkPackaging({ config, projectRoot, platform, arch }) {
     );
   }
 
+  for (const library of libraries) {
+    const dependencyPath = toPosix(
+      path.join('node_modules', ...library.packageName.split('/'))
+    );
+    appendUnique(config, 'files', `!${dependencyPath}`);
+    appendUnique(config, 'files', `!${dependencyPath}/**/*`);
+  }
+
   if (platform === 'darwin') {
     for (const library of libraries) {
       for (const framework of library.frameworks) {
@@ -63,11 +71,16 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
 
   const libraries = [];
   for (const packageRoot of listPackageRoots(nodeModulesDirectory)) {
+    const packageJsonPath = path.join(packageRoot, 'package.json');
     const manifestPath = path.join(packageRoot, 'lynx.lib.json');
-    if (!fs.existsSync(manifestPath)) {
+    if (!fs.existsSync(packageJsonPath) || !fs.existsSync(manifestPath)) {
       continue;
     }
 
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    if (typeof packageJson.name !== 'string' || packageJson.name.length === 0) {
+      throw new Error(`${packageJsonPath} has no package name`);
+    }
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     const lynxtron = manifest?.platforms?.lynxtron;
     if (!lynxtron || typeof lynxtron !== 'object') {
@@ -121,6 +134,7 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
     }
 
     libraries.push({
+      packageName: packageJson.name,
       packageRoot,
       manifestPath,
       files,

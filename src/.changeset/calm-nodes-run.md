@@ -19,6 +19,12 @@ CLI defaults to DevTool while `lynxtron-builder` defaults to Release, with CLI,
 environment, and electron-builder.yml overrides for explicit selection.
 Download missing runtimes from the matching Lynxtron GitHub Release by default,
 including the DevTool runtime installed by npm postinstall.
+Allow source builds to skip that postinstall download while their matching
+runtime release does not exist yet.
+Load the generated application's Lynx bundle directly from its ASAR and stop
+copying the complete desktop output as an extra resource. Package AutoLink
+libraries only from `.lynxtron/native`, without a duplicate regular
+`node_modules` payload.
 Keep Release and DevTool downloads under distinct electron-builder cache keys so
 switching variants at the same version cannot reuse the other runtime archive.
 Publish both macOS x64 and arm64 runtime archives so universal packaging can

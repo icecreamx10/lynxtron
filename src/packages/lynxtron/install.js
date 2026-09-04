@@ -1,5 +1,10 @@
-import { getPostinstallRuntimeOptions } from './install-policy.js';
+import {
+  getPostinstallRuntimeOptions,
+  shouldSkipPostinstallRuntime,
+} from './install-policy.js';
 import { ensureRuntime } from './runtime-manager.js';
 
-const options = getPostinstallRuntimeOptions();
-await ensureRuntime(options);
+if (!shouldSkipPostinstallRuntime()) {
+  const options = getPostinstallRuntimeOptions();
+  await ensureRuntime(options);
+}

@@ -34,6 +34,10 @@ test('packages macOS AutoLink addons unpacked and Frameworks in Contents/Framewo
 
   assert.equal(result.libraries.length, 1);
   assert.ok(config.files.includes('.lynxtron/native/**/*'));
+  assert.ok(config.files.includes('!node_modules/@lynx-js/cef-webview'));
+  assert.ok(
+    config.files.includes('!node_modules/@lynx-js/cef-webview/**/*')
+  );
   assert.ok(
     config.files.includes(
       '!.lynxtron/native/node_modules/@lynx-js/cef-webview/dist/darwin/arm64/frameworks/**/*'
@@ -74,6 +78,10 @@ test('packages Windows AutoLink addon and adjacent CEF runtime files unpacked', 
   );
   assert.equal(result.libraries[0].files[1].path, 'dist/win32/x64/libcef.dll');
   assert.ok(config.files.includes('.lynxtron/native/**/*'));
+  assert.ok(config.files.includes('!node_modules/@lynx-js/cef-webview'));
+  assert.ok(
+    config.files.includes('!node_modules/@lynx-js/cef-webview/**/*')
+  );
   assert.ok(config.asarUnpack.includes('.lynxtron/native/**/*'));
   assert.equal(config.extraFiles, undefined);
   assert.ok(
@@ -103,7 +111,12 @@ test('preserves electron-builder default app files when files is omitted', () =>
     arch: 'x64',
   });
 
-  assert.deepEqual(config.files, ['**/*', '.lynxtron/native/**/*']);
+  assert.deepEqual(config.files, [
+    '**/*',
+    '.lynxtron/native/**/*',
+    '!node_modules/@lynx-js/cef-webview',
+    '!node_modules/@lynx-js/cef-webview/**/*',
+  ]);
 });
 
 test('fails before packaging when the target architecture artifact is absent', () => {
@@ -182,7 +195,10 @@ function createFixture() {
   fs.mkdirSync(path.join(packageRoot, 'dist', 'win32', 'x64'), {
     recursive: true,
   });
-  fs.writeFileSync(path.join(packageRoot, 'package.json'), '{}');
+  fs.writeFileSync(
+    path.join(packageRoot, 'package.json'),
+    JSON.stringify({ name: '@lynx-js/cef-webview' })
+  );
   fs.writeFileSync(path.join(packageRoot, 'index.cjs'), 'module.exports = {};');
   fs.writeFileSync(
     path.join(packageRoot, 'dist', 'darwin', 'arm64', 'cef_extension.node'),
