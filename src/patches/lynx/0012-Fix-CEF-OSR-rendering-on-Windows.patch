@@ -235,7 +235,7 @@ diff --git a/platform/embedder/plugin/cef/src/win/cef_webview_client_win.h b/pla
 diff --git a/platform/embedder/plugin/cef/src/win/cef_webview_initializer.cc b/platform/embedder/plugin/cef/src/win/cef_webview_initializer.cc
 --- a/platform/embedder/plugin/cef/src/win/cef_webview_initializer.cc
 +++ b/platform/embedder/plugin/cef/src/win/cef_webview_initializer.cc
-@@ -94,9 +94,13 @@ class CEFWebviewApp : public CefApp,
+@@ -94,9 +94,12 @@ class CEFWebviewApp : public CefApp,
  
  }  // namespace
  
@@ -244,7 +244,7 @@ diff --git a/platform/embedder/plugin/cef/src/win/cef_webview_initializer.cc b/p
 +}
 +
  LYNX_EXTERN_C bool cef_extension_module_initialize() {
-   CefMainArgs main_args(::GetModuleHandle(nullptr));
+-  CefMainArgs main_args(::GetModuleHandle(nullptr));
 -  int exit_code = CefExecuteProcess(main_args, new CEFWebviewApp, nullptr);
 +  int exit_code = cef_webview_execute_process(::GetModuleHandle(nullptr));
    if (exit_code >= 0) {
