@@ -54,39 +54,4 @@ if (platform === 'darwin') {
   ensureDarwinFrameworkLinks(outputRoot);
 }
 
-if (platform === 'win32') {
-  const runtimeFiles = [
-    'chrome_elf.dll',
-    'd3dcompiler_47.dll',
-    'dxcompiler.dll',
-    'dxil.dll',
-    'icudtl.dat',
-    'libcef.dll',
-    'libEGL.dll',
-    'libGLESv2.dll',
-    'resources.pak',
-    'chrome_100_percent.pak',
-    'chrome_200_percent.pak',
-    'v8_context_snapshot.bin',
-    'vk_swiftshader.dll',
-    'vk_swiftshader_icd.json',
-    'vulkan-1.dll',
-  ];
-
-  for (const runtimeFile of runtimeFiles) {
-    await fs.copyFile(
-      path.join(releaseRoot, runtimeFile),
-      path.join(outputRoot, runtimeFile)
-    );
-  }
-  await fs.cp(
-    path.join(releaseRoot, 'locales'),
-    path.join(outputRoot, 'locales'),
-    {
-      recursive: true,
-      force: true,
-    }
-  );
-}
-
 console.log(`staged cef-webview build at ${outputRoot}`);

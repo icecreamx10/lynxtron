@@ -110,11 +110,10 @@ test('fails clearly when the installed package has no matching binary', () => {
   );
 });
 
-test('Windows builds use the published Lynxtron import library and stage the CEF runtime', () => {
-  assert.match(cmakeSource, /out\/Release\/lynxtron\.dll\.lib/);
-  assert.match(cmakeSource, /dist\/devtool\/lynxtron\.dll\.lib/);
+test('Windows builds use the Lynxtron import helper and stage the CEF runtime', () => {
+  assert.match(cmakeSource, /lynx_link_lynxtron_runtime/);
   assert.doesNotMatch(cmakeSource, /lxtn\.dll\.lib/);
-  assert.match(stageBuildSource, /'libcef\.dll'/);
-  assert.match(stageBuildSource, /'resources\.pak'/);
-  assert.match(stageBuildSource, /path\.join\(releaseRoot, 'locales'\)/);
+  assert.match(stageBuildSource, /'cef_subprocess\.exe'/);
+  assert.match(stageBuildSource, /runtimeExtensions/);
+  assert.match(stageBuildSource, /path\.join\(cefRoot, 'Resources'\)/);
 });
