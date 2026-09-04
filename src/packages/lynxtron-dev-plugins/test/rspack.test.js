@@ -118,7 +118,12 @@ test('AutoLink stages native packages after the output directory is cleaned', as
   );
 
   try {
-    await fs.mkdir(path.join(packageRoot, 'dist'), { recursive: true });
+    await fs.mkdir(path.join(packageRoot, 'dist', 'runtime'), {
+      recursive: true,
+    });
+    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks'), {
+      recursive: true,
+    });
     await fs.writeFile(
       path.join(tempDir, 'package.json'),
       JSON.stringify({
@@ -154,7 +159,8 @@ test('AutoLink stages native packages after the output directory is cleaned', as
                 os: process.platform,
                 arch: process.arch,
                 binaries: ['dist/native.node'],
-                frameworks: ['dist'],
+                resources: ['dist/runtime'],
+                frameworks: ['dist/frameworks'],
               },
             ],
           },
@@ -169,12 +175,18 @@ test('AutoLink stages native packages after the output directory is cleaned', as
       path.join(packageRoot, 'dist', 'native-win.node'),
       'fixture-win32'
     );
-    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks'));
-    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks-win'));
+    await fs.writeFile(
+      path.join(packageRoot, 'dist', 'runtime', 'runtime.dat'),
+      'runtime'
+    );
+    await fs.writeFile(
+      path.join(packageRoot, 'dist', 'frameworks', 'framework.bin'),
+      'framework'
+    );
     if (process.platform !== 'win32') {
       await fs.symlink(
-        'native.node',
-        path.join(packageRoot, 'dist', 'native-link.node')
+        'framework.bin',
+        path.join(packageRoot, 'dist', 'frameworks', 'framework-link')
       );
     }
 
@@ -233,6 +245,16 @@ test('AutoLink stages native packages after the output directory is cleaned', as
 
     assert.equal(
       await fs.readFile(
+        path.join(stagedPackageRoot, 'dist', 'runtime', 'runtime.dat'),
+        'utf8'
+      ),
+      'runtime'
+    );
+    await assert.rejects(
+      fs.access(path.join(stagedPackageRoot, 'dist', 'native-win.node'))
+    );
+    assert.equal(
+      await fs.readFile(
         path.join(stagedPackageRoot, 'dist', 'native.node'),
         'utf8'
       ),
@@ -241,9 +263,9 @@ test('AutoLink stages native packages after the output directory is cleaned', as
     if (process.platform !== 'win32') {
       assert.equal(
         await fs.readlink(
-          path.join(stagedPackageRoot, 'dist', 'native-link.node')
+          path.join(stagedPackageRoot, 'dist', 'frameworks', 'framework-link')
         ),
-        'native.node'
+        'framework.bin'
       );
     }
 
@@ -264,9 +286,9 @@ test('AutoLink stages native packages after the output directory is cleaned', as
     if (process.platform !== 'win32') {
       assert.equal(
         await fs.readlink(
-          path.join(stagedPackageRoot, 'dist', 'native-link.node')
+          path.join(stagedPackageRoot, 'dist', 'frameworks', 'framework-link')
         ),
-        'native.node'
+        'framework.bin'
       );
     }
   } finally {
@@ -320,6 +342,7 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
                 os: process.platform,
                 arch: process.arch,
                 binaries: ['dist/native.node'],
+                resources: ['../outside', 'dist/frameworks'],
                 frameworks: ['dist/frameworks'],
               },
             ],
@@ -330,13 +353,13 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
 
     assert.deepEqual(
       resolveLynxtronAutoLinks({ root: tempDir }).libraries.map(
-        ({ frameworks, libs, stageMode }) => ({ frameworks, libs, stageMode })
+        ({ frameworks, libs, resources }) => ({ frameworks, libs, resources })
       ),
       [
         {
           frameworks: ['dist/frameworks'],
           libs: ['dist/native.node'],
-          stageMode: 'package',
+          resources: ['dist/frameworks'],
         },
       ]
     );
@@ -356,6 +379,7 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
                 os: 'win32',
                 arch: 'x64',
                 binaries: ['dist/native-win.node'],
+                resources: ['dist/frameworks-win'],
                 frameworks: ['dist/frameworks-win'],
               },
             ],
@@ -369,16 +393,16 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
         root: tempDir,
         platform: 'win32',
         arch: 'x64',
-      }).libraries.map(({ frameworks, libs, stageMode }) => ({
+      }).libraries.map(({ frameworks, libs, resources }) => ({
         frameworks,
         libs,
-        stageMode,
+        resources,
       })),
       [
         {
           frameworks: ['dist/frameworks-win'],
           libs: ['dist/native-win.node'],
-          stageMode: 'package',
+          resources: ['dist/frameworks-win'],
         },
       ]
     );

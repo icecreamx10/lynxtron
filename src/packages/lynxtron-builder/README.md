@@ -28,6 +28,6 @@ loadable.
 
 For macOS targets, Framework directories declared by the selected
 `platforms.lynxtron.targets` record are copied into `Contents/Frameworks` with
-their symbolic links preserved. For Windows targets, the staged package stays
-under `app.asar.unpacked`; DLLs, resource packs, and locales can remain next to
-the selected `.node` addon.
+their symbolic links preserved. For Windows targets, declared `resources` stay
+under `app.asar.unpacked` next to the selected `.node` addon, including DLLs,
+resource packs, and locales.

@@ -72,6 +72,10 @@ test('packages Windows AutoLink addon and adjacent CEF runtime files unpacked', 
     result.libraries[0].binaries[0].path,
     'dist/win32/x64/cef_extension.node'
   );
+  assert.equal(
+    result.libraries[0].resources[0].path,
+    'dist/win32/x64/libcef.dll'
+  );
   assert.ok(config.files.includes('.lynxtron/native/**/*'));
   assert.ok(config.asarUnpack.includes('.lynxtron/native/**/*'));
   assert.equal(config.extraFiles, undefined);
@@ -202,6 +206,7 @@ function createFixture() {
               os: 'win32',
               arch: 'x64',
               binaries: ['dist/win32/x64/cef_extension.node'],
+              resources: ['dist/win32/x64/libcef.dll'],
             },
           ],
         },

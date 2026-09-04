@@ -99,6 +99,14 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
       field: 'binaries',
       manifestPath,
     });
+    const resources = resolveArtifactPaths({
+      paths: target.resources,
+      packageRoot,
+      platform,
+      arch,
+      field: 'resources',
+      manifestPath,
+    });
     const frameworks = resolveArtifactPaths({
       paths: target.frameworks,
       packageRoot,
@@ -108,13 +116,23 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
       manifestPath,
     });
 
-    if (binaries.length === 0 && frameworks.length === 0) {
+    if (
+      binaries.length === 0 &&
+      resources.length === 0 &&
+      frameworks.length === 0
+    ) {
       throw new Error(
         `${manifestPath} has no Lynxtron artifacts for ${platform}/${arch}`
       );
     }
 
-    libraries.push({ packageRoot, manifestPath, binaries, frameworks });
+    libraries.push({
+      packageRoot,
+      manifestPath,
+      binaries,
+      resources,
+      frameworks,
+    });
   }
   return libraries;
 }

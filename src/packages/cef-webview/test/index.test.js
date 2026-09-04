@@ -19,6 +19,9 @@ const stageBuildSource = fs.readFileSync(
   path.resolve(__dirname, '../scripts/stage-build.js'),
   'utf8'
 );
+const manifest = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../lynx.lib.json'), 'utf8')
+);
 
 function loadEntry({ platform, arch, manifest }) {
   const module = { exports: {} };
@@ -116,4 +119,28 @@ test('Windows builds use the Lynxtron import helper and stage the CEF runtime', 
   assert.match(stageBuildSource, /'cef_subprocess\.exe'/);
   assert.match(stageBuildSource, /runtimeExtensions/);
   assert.match(stageBuildSource, /path\.join\(cefRoot, 'Resources'\)/);
+  assert.deepEqual(
+    manifest.platforms.lynxtron.targets.find(
+      ({ os, arch }) => os === 'win32' && arch === 'x64'
+    ).resources,
+    [
+      'dist/win32/x64/cef_subprocess.exe',
+      'dist/win32/x64/chrome_100_percent.pak',
+      'dist/win32/x64/chrome_200_percent.pak',
+      'dist/win32/x64/chrome_elf.dll',
+      'dist/win32/x64/d3dcompiler_47.dll',
+      'dist/win32/x64/dxcompiler.dll',
+      'dist/win32/x64/dxil.dll',
+      'dist/win32/x64/icudtl.dat',
+      'dist/win32/x64/libcef.dll',
+      'dist/win32/x64/libEGL.dll',
+      'dist/win32/x64/libGLESv2.dll',
+      'dist/win32/x64/locales',
+      'dist/win32/x64/resources.pak',
+      'dist/win32/x64/v8_context_snapshot.bin',
+      'dist/win32/x64/vk_swiftshader_icd.json',
+      'dist/win32/x64/vk_swiftshader.dll',
+      'dist/win32/x64/vulkan-1.dll',
+    ]
+  );
 });

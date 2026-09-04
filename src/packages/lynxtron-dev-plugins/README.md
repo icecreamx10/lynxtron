@@ -93,8 +93,9 @@ automatically.
 
 For `lynxtron`, the package's `./lynxtron` export provides the JS registration
 entry. Its `lynx.lib.json` uses a `targets` array. Every target declares `os`,
-`arch`, and one or both string arrays named `binaries` and `frameworks`.
-AutoLink selects one matching target before staging the package. The opaque
+`arch`, and one or more string arrays named `binaries`, `resources`, and
+`frameworks`. AutoLink selects one matching target and stages only its declared
+artifacts together with the package metadata and `./lynxtron` entry. The opaque
 top-level `path` and artifact fields outside a target are not supported by this
 prerelease schema.
 
