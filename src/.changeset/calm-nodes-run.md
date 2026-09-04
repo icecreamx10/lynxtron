@@ -17,6 +17,8 @@ installation across processes so simultaneous first launches reuse one download.
 Publish Release and DevTool runtimes under one package version. The `lynxtron`
 CLI defaults to DevTool while `lynxtron-builder` defaults to Release, with CLI,
 environment, and electron-builder.yml overrides for explicit selection.
+Download missing runtimes from the matching Lynxtron GitHub Release by default,
+including the DevTool runtime installed by npm postinstall.
 Keep Release and DevTool downloads under distinct electron-builder cache keys so
 switching variants at the same version cannot reuse the other runtime archive.
 Publish both macOS x64 and arm64 runtime archives so universal packaging can
