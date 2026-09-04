@@ -22,6 +22,8 @@ initialized only when you call `initialize()`.
 The package selects its native addon from `lynx.lib.json`. On Windows, it also
 ships the CEF DLLs, resource packs, and locales next to that addon and adds the
 selected runtime directory to the DLL search path before loading it.
+On macOS, AutoLink embeds the CEF Framework and the package-owned
+`LynxtronWebview Helper` app bundles into the host application.
 
 ```ts
 import cefWebview from '@lynx-js/cef-webview/lynxtron';

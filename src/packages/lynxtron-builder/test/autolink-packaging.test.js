@@ -17,7 +17,7 @@ test.afterEach(() => {
   }
 });
 
-test('packages macOS AutoLink addons unpacked and Frameworks in Contents/Frameworks', async () => {
+test('packages macOS AutoLink addons, Frameworks, and app bundles', async () => {
   const fixture = createFixture();
   const config = {
     directories: { app: 'dist/desktop' },
@@ -40,14 +40,24 @@ test('packages macOS AutoLink addons unpacked and Frameworks in Contents/Framewo
   );
   assert.ok(
     config.files.includes(
-      '!.lynxtron/native/node_modules/@lynx-js/cef-webview/dist/darwin/arm64/frameworks/**/*'
+      '!.lynxtron/native/node_modules/@lynx-js/cef-webview/dist/darwin/arm64/frameworks/Chromium Embedded Framework.framework/**/*'
+    )
+  );
+  assert.ok(
+    config.files.includes(
+      '!.lynxtron/native/node_modules/@lynx-js/cef-webview/dist/darwin/arm64/frameworks/LynxtronWebview Helper.app/**/*'
     )
   );
   assert.ok(config.asarUnpack.includes('.lynxtron/native/**/*'));
   assert.deepEqual(config.extraFiles, [
     {
       from: fixture.frameworksPath,
-      to: 'Frameworks',
+      to: 'Frameworks/Chromium Embedded Framework.framework',
+      filter: ['**/*'],
+    },
+    {
+      from: fixture.appBundlePath,
+      to: 'Frameworks/LynxtronWebview Helper.app',
       filter: ['**/*'],
     },
   ]);
@@ -166,6 +176,54 @@ test('rejects legacy Lynxtron artifact categories', () => {
   );
 });
 
+test('rejects app bundles for non-macOS targets', () => {
+  const fixture = createFixture();
+  const manifestPath = path.join(fixture.packageRoot, 'lynx.lib.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const target = manifest.platforms.lynxtron.targets.find(
+    ({ os, arch }) => os === 'win32' && arch === 'x64'
+  );
+  target.appBundles = [
+    'dist/darwin/arm64/frameworks/LynxtronWebview Helper.app',
+  ];
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+  assert.throws(
+    () =>
+      prepareAutoLinkPackaging({
+        config: { directories: { app: 'dist/desktop' } },
+        projectRoot: fixture.projectRoot,
+        platform: 'win32',
+        arch: 'x64',
+      }),
+    /only supports appBundles for darwin targets/
+  );
+});
+
+test('rejects Framework bundles for non-macOS targets', () => {
+  const fixture = createFixture();
+  const manifestPath = path.join(fixture.packageRoot, 'lynx.lib.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const target = manifest.platforms.lynxtron.targets.find(
+    ({ os, arch }) => os === 'win32' && arch === 'x64'
+  );
+  target.frameworks = [
+    'dist/darwin/arm64/frameworks/Chromium Embedded Framework.framework',
+  ];
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+  assert.throws(
+    () =>
+      prepareAutoLinkPackaging({
+        config: { directories: { app: 'dist/desktop' } },
+        projectRoot: fixture.projectRoot,
+        platform: 'win32',
+        arch: 'x64',
+      }),
+    /only supports frameworks for darwin targets/
+  );
+});
+
 function createFixture() {
   const projectRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'lynxtron-builder-autolink-')
@@ -189,6 +247,18 @@ function createFixture() {
     'frameworks'
   );
   fs.mkdirSync(frameworksPath, { recursive: true });
+  const frameworkPath = path.join(
+    frameworksPath,
+    'Chromium Embedded Framework.framework'
+  );
+  const appBundlePath = path.join(
+    frameworksPath,
+    'LynxtronWebview Helper.app'
+  );
+  fs.mkdirSync(frameworkPath, { recursive: true });
+  fs.mkdirSync(path.join(appBundlePath, 'Contents', 'MacOS'), {
+    recursive: true,
+  });
   fs.mkdirSync(path.join(packageRoot, 'dist', 'darwin', 'x64'), {
     recursive: true,
   });
@@ -217,8 +287,17 @@ function createFixture() {
     'cef'
   );
   fs.writeFileSync(
-    path.join(frameworksPath, 'Chromium Embedded Framework.framework'),
+    path.join(frameworkPath, 'Chromium Embedded Framework'),
     'framework'
+  );
+  fs.writeFileSync(
+    path.join(
+      appBundlePath,
+      'Contents',
+      'MacOS',
+      'LynxtronWebview Helper'
+    ),
+    'helper'
   );
   fs.writeFileSync(
     path.join(packageRoot, 'lynx.lib.json'),
@@ -230,13 +309,20 @@ function createFixture() {
               os: 'darwin',
               arch: 'arm64',
               files: ['dist/darwin/arm64/cef_extension.node'],
-              frameworks: ['dist/darwin/arm64/frameworks'],
+              frameworks: [
+                'dist/darwin/arm64/frameworks/Chromium Embedded Framework.framework',
+              ],
+              appBundles: [
+                'dist/darwin/arm64/frameworks/LynxtronWebview Helper.app',
+              ],
             },
             {
               os: 'darwin',
               arch: 'x64',
               files: ['dist/darwin/x64/cef_extension.node'],
-              frameworks: ['dist/darwin/x64/frameworks'],
+              frameworks: [
+                'dist/darwin/x64/Chromium Embedded Framework.framework',
+              ],
             },
             {
               os: 'win32',
@@ -251,7 +337,20 @@ function createFixture() {
       },
     })
   );
-  fs.mkdirSync(path.join(packageRoot, 'dist', 'darwin', 'x64', 'frameworks'));
+  fs.mkdirSync(
+    path.join(
+      packageRoot,
+      'dist',
+      'darwin',
+      'x64',
+      'Chromium Embedded Framework.framework'
+    )
+  );
 
-  return { projectRoot, packageRoot, frameworksPath };
+  return {
+    projectRoot,
+    packageRoot,
+    frameworksPath: frameworkPath,
+    appBundlePath,
+  };
 }

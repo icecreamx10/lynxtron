@@ -23,7 +23,8 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
   set(FRAMEWORK_DST_PATH ${CMAKE_BINARY_DIR}/frameworks)
 endif()
 
-set(HOST_EXECUTABLE_NAME "lynxtron")
+set(CEF_WEBVIEW_HELPER_NAME "LynxtronWebview")
+set(CEF_WEBVIEW_HELPER_BUNDLE_ID "org.lynxjs.lynxtron.webview.helper")
 set(PROJECT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 set(LYNX_ROOT_DIR ${PROJECT_ROOT_DIR}/lynx)
 

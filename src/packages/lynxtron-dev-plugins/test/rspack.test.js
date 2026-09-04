@@ -81,9 +81,9 @@ async function verifySpaceContainingArguments(modulePath) {
     doneCallback();
 
     assert.deepEqual(await waitForJson(outputPath), [
+      entry,
       '--label',
       'value with spaces',
-      entry,
     ]);
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
@@ -121,9 +121,20 @@ test('AutoLink stages native packages after the output directory is cleaned', as
     await fs.mkdir(path.join(packageRoot, 'dist', 'runtime'), {
       recursive: true,
     });
-    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks'), {
+    await fs.mkdir(path.join(packageRoot, 'dist', 'Fixture.framework'), {
       recursive: true,
     });
+    await fs.mkdir(
+      path.join(
+        packageRoot,
+        'dist',
+        'app-bundles',
+        'LynxtronWebview Helper.app',
+        'Contents',
+        'MacOS'
+      ),
+      { recursive: true }
+    );
     await fs.writeFile(
       path.join(tempDir, 'package.json'),
       JSON.stringify({
@@ -159,7 +170,14 @@ test('AutoLink stages native packages after the output directory is cleaned', as
                 os: process.platform,
                 arch: process.arch,
                 files: ['dist/native.node', 'dist/runtime'],
-                frameworks: ['dist/frameworks'],
+                ...(process.platform === 'darwin'
+                  ? {
+                      frameworks: ['dist/Fixture.framework'],
+                      appBundles: [
+                        'dist/app-bundles/LynxtronWebview Helper.app',
+                      ],
+                    }
+                  : {}),
               },
             ],
           },
@@ -179,13 +197,25 @@ test('AutoLink stages native packages after the output directory is cleaned', as
       'runtime'
     );
     await fs.writeFile(
-      path.join(packageRoot, 'dist', 'frameworks', 'framework.bin'),
+      path.join(packageRoot, 'dist', 'Fixture.framework', 'framework.bin'),
       'framework'
     );
-    if (process.platform !== 'win32') {
+    await fs.writeFile(
+      path.join(
+        packageRoot,
+        'dist',
+        'app-bundles',
+        'LynxtronWebview Helper.app',
+        'Contents',
+        'MacOS',
+        'LynxtronWebview Helper'
+      ),
+      'helper'
+    );
+    if (process.platform === 'darwin') {
       await fs.symlink(
         'framework.bin',
-        path.join(packageRoot, 'dist', 'frameworks', 'framework-link')
+        path.join(packageRoot, 'dist', 'Fixture.framework', 'framework-link')
       );
     }
 
@@ -259,10 +289,30 @@ test('AutoLink stages native packages after the output directory is cleaned', as
       ),
       'fixture'
     );
-    if (process.platform !== 'win32') {
+    if (process.platform === 'darwin') {
+      assert.equal(
+        await fs.readFile(
+          path.join(
+            stagedPackageRoot,
+            'dist',
+            'app-bundles',
+            'LynxtronWebview Helper.app',
+            'Contents',
+            'MacOS',
+            'LynxtronWebview Helper'
+          ),
+          'utf8'
+        ),
+        'helper'
+      );
       assert.equal(
         await fs.readlink(
-          path.join(stagedPackageRoot, 'dist', 'frameworks', 'framework-link')
+          path.join(
+            stagedPackageRoot,
+            'dist',
+            'Fixture.framework',
+            'framework-link'
+          )
         ),
         'framework.bin'
       );
@@ -282,10 +332,15 @@ test('AutoLink stages native packages after the output directory is cleaned', as
       ),
       'fixture'
     );
-    if (process.platform !== 'win32') {
+    if (process.platform === 'darwin') {
       assert.equal(
         await fs.readlink(
-          path.join(stagedPackageRoot, 'dist', 'frameworks', 'framework-link')
+          path.join(
+            stagedPackageRoot,
+            'dist',
+            'Fixture.framework',
+            'framework-link'
+          )
         ),
         'framework.bin'
       );
@@ -323,7 +378,7 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
       path.join(packageRoot, 'dist', 'native-win.node'),
       'fixture-win32'
     );
-    await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks'));
+    await fs.mkdir(path.join(packageRoot, 'dist', 'Fixture.framework'));
     await fs.mkdir(path.join(packageRoot, 'dist', 'frameworks-win'));
 
     const { resolveLynxtronAutoLinks } = await import(
@@ -338,10 +393,10 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
           lynxtron: {
             targets: [
               {
-                os: process.platform,
-                arch: process.arch,
+                os: 'darwin',
+                arch: 'arm64',
                 files: ['../outside', 'dist/native.node', 'dist/frameworks'],
-                frameworks: ['dist/frameworks'],
+                frameworks: ['dist/Fixture.framework'],
               },
             ],
           },
@@ -350,13 +405,17 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
     );
 
     assert.deepEqual(
-      resolveLynxtronAutoLinks({ root: tempDir }).libraries.map(
+      resolveLynxtronAutoLinks({
+        root: tempDir,
+        platform: 'darwin',
+        arch: 'arm64',
+      }).libraries.map(
         ({ files, frameworks }) => ({ files, frameworks })
       ),
       [
         {
           files: ['dist/native.node', 'dist/frameworks'],
-          frameworks: ['dist/frameworks'],
+          frameworks: ['dist/Fixture.framework'],
         },
       ]
     );
@@ -376,7 +435,6 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
                 os: 'win32',
                 arch: 'x64',
                 files: ['dist/native-win.node', 'dist/frameworks-win'],
-                frameworks: ['dist/frameworks-win'],
               },
             ],
           },
@@ -396,7 +454,7 @@ test('AutoLink accepts only the prerelease Lynxtron artifact schema', async () =
       [
         {
           files: ['dist/native-win.node', 'dist/frameworks-win'],
-          frameworks: ['dist/frameworks-win'],
+          frameworks: [],
         },
       ]
     );

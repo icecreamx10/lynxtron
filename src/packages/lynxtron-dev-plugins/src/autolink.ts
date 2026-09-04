@@ -46,6 +46,7 @@ export interface LynxtronRuntimeTarget {
   arch: string;
   files?: string[];
   frameworks?: string[];
+  appBundles?: string[];
 }
 
 export interface LynxtronAutoLinkLibrary {
@@ -60,6 +61,8 @@ export interface LynxtronAutoLinkLibrary {
   filePaths: string[];
   frameworks: string[];
   frameworkPaths: string[];
+  appBundles: string[];
+  appBundlePaths: string[];
   entry: string;
   nodeModulesPath: string;
   warnings: string[];
@@ -103,6 +106,7 @@ interface MatchedManifestEntry {
   archKey: string;
   files: string[];
   frameworks: string[];
+  appBundles: string[];
 }
 
 export function resolveLynxtronAutoLinks(
@@ -173,8 +177,24 @@ export function resolveLynxtronAutoLinks(
     const frameworkPaths = frameworks.map((frameworkPath) =>
       path.join(resolvedPackage.packageRoot, frameworkPath)
     );
+    const appBundles = matchedEntry.appBundles.map((appBundlePath) =>
+      expandManifestVariables(
+        appBundlePath,
+        platform,
+        arch,
+        matchedEntry.platformKey,
+        matchedEntry.archKey
+      )
+    );
+    const appBundlePaths = appBundles.map((appBundlePath) =>
+      path.join(resolvedPackage.packageRoot, appBundlePath)
+    );
 
-    if (files.length === 0 && frameworks.length === 0) {
+    if (
+      files.length === 0 &&
+      frameworks.length === 0 &&
+      appBundles.length === 0
+    ) {
       continue;
     }
     const libraryWarnings: string[] = [];
@@ -215,6 +235,13 @@ export function resolveLynxtronAutoLinks(
       absolutePaths: frameworkPaths,
       warnings: libraryWarnings,
     });
+    validateArtifactPaths({
+      dependencyName,
+      kind: 'app bundle',
+      paths: appBundles,
+      absolutePaths: appBundlePaths,
+      warnings: libraryWarnings,
+    });
 
     for (const warning of libraryWarnings) {
       warnings.push(warning);
@@ -233,6 +260,8 @@ export function resolveLynxtronAutoLinks(
       filePaths,
       frameworks,
       frameworkPaths,
+      appBundles,
+      appBundlePaths,
       entry,
       nodeModulesPath: packageNameToNodeModulesPath(dependencyName),
       warnings: libraryWarnings,
@@ -602,11 +631,40 @@ function matchNodeApiManifestEntry(
     );
   }
 
+  const frameworks = normalizeLibraryPaths(target.entry.frameworks);
+  if (frameworks.length > 0) {
+    if (!matchesManifestKey('darwin', runtimePlatform, PLATFORM_ALIASES)) {
+      throw new Error(
+        'Lynxtron AutoLink only supports frameworks for darwin targets.'
+      );
+    }
+    if (frameworks.some((framework) => !framework.endsWith('.framework'))) {
+      throw new Error(
+        'Lynxtron AutoLink requires every frameworks path to end in .framework.'
+      );
+    }
+  }
+
+  const appBundles = normalizeLibraryPaths(target.entry.appBundles);
+  if (appBundles.length > 0) {
+    if (!matchesManifestKey('darwin', runtimePlatform, PLATFORM_ALIASES)) {
+      throw new Error(
+        'Lynxtron AutoLink only supports appBundles for darwin targets.'
+      );
+    }
+    if (appBundles.some((appBundle) => !appBundle.endsWith('.app'))) {
+      throw new Error(
+        'Lynxtron AutoLink requires every appBundles path to end in .app.'
+      );
+    }
+  }
+
   return {
     platformKey: 'lynxtron',
     archKey: target.archKey,
     files: normalizeLibraryPaths(target.entry.files),
-    frameworks: normalizeLibraryPaths(target.entry.frameworks),
+    frameworks,
+    appBundles,
   };
 }
 
@@ -732,6 +790,7 @@ function getAutoLinkPackageFiles(library: LynxtronAutoLinkLibrary): string[] {
         library.entry,
         ...library.files,
         ...library.frameworks,
+        ...library.appBundles,
       ]
         .filter((entry) => entry.length > 0 && !hasGlob(entry))
         .map(normalizeFilterPath)

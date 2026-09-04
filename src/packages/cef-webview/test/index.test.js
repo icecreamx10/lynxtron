@@ -116,6 +116,31 @@ test('fails clearly when the installed package has no matching binary', () => {
   );
 });
 
+test('macOS metadata publishes the package-owned CEF bundles', () => {
+  const target = manifest.platforms.lynxtron.targets.find(
+    ({ os, arch }) => os === 'darwin' && arch === 'arm64'
+  );
+
+  assert.deepEqual(target.frameworks, [
+    'dist/darwin/arm64/frameworks/Chromium Embedded Framework.framework',
+  ]);
+  assert.deepEqual(target.appBundles, [
+    'dist/darwin/arm64/frameworks/LynxtronWebview Helper.app',
+    'dist/darwin/arm64/frameworks/LynxtronWebview Helper (Alerts).app',
+    'dist/darwin/arm64/frameworks/LynxtronWebview Helper (GPU).app',
+    'dist/darwin/arm64/frameworks/LynxtronWebview Helper (Plugin).app',
+    'dist/darwin/arm64/frameworks/LynxtronWebview Helper (Renderer).app',
+  ]);
+  assert.match(
+    cmakeSource,
+    /set\(CEF_WEBVIEW_HELPER_NAME "LynxtronWebview"\)/
+  );
+  assert.match(
+    cmakeSource,
+    /set\(CEF_WEBVIEW_HELPER_BUNDLE_ID "org\.lynxjs\.lynxtron\.webview\.helper"\)/
+  );
+});
+
 test('Windows builds use the Lynxtron import helper and stage the CEF runtime', () => {
   assert.match(cmakeSource, /lynx_link_lynxtron_runtime/);
   assert.doesNotMatch(cmakeSource, /lxtn\.dll\.lib/);

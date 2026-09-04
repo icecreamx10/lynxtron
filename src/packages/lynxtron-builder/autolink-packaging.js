@@ -49,7 +49,19 @@ function prepareAutoLinkPackaging({ config, projectRoot, platform, arch }) {
         appendUnique(config, 'files', `!${relativeFrameworkPath}/**/*`);
         appendUniqueFileSet(config, 'extraFiles', {
           from: framework.absolutePath,
-          to: 'Frameworks',
+          to: toPosix(path.join('Frameworks', path.basename(framework.path))),
+          filter: ['**/*'],
+        });
+      }
+      for (const appBundle of library.appBundles) {
+        const relativeAppBundlePath = toPosix(
+          path.relative(appDirectory, appBundle.absolutePath)
+        );
+        appendUnique(config, 'files', `!${relativeAppBundlePath}`);
+        appendUnique(config, 'files', `!${relativeAppBundlePath}/**/*`);
+        appendUniqueFileSet(config, 'extraFiles', {
+          from: appBundle.absolutePath,
+          to: toPosix(path.join('Frameworks', path.basename(appBundle.path))),
           filter: ['**/*'],
         });
       }
@@ -126,11 +138,49 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
       field: 'frameworks',
       manifestPath,
     });
+    const appBundles = resolveArtifactPaths({
+      paths: target.appBundles,
+      packageRoot,
+      platform,
+      arch,
+      field: 'appBundles',
+      manifestPath,
+    });
 
-    if (files.length === 0 && frameworks.length === 0) {
+    if (frameworks.length > 0 && platform !== 'darwin') {
+      throw new Error(
+        `${manifestPath} only supports frameworks for darwin targets`
+      );
+    }
+    for (const framework of frameworks) {
+      if (!framework.path.endsWith('.framework')) {
+        throw new Error(
+          `${manifestPath} frameworks path must end in .framework: ${framework.path}`
+        );
+      }
+    }
+
+    if (
+      files.length === 0 &&
+      frameworks.length === 0 &&
+      appBundles.length === 0
+    ) {
       throw new Error(
         `${manifestPath} has no Lynxtron artifacts for ${platform}/${arch}`
       );
+    }
+
+    if (appBundles.length > 0 && platform !== 'darwin') {
+      throw new Error(
+        `${manifestPath} only supports appBundles for darwin targets`
+      );
+    }
+    for (const appBundle of appBundles) {
+      if (!appBundle.path.endsWith('.app')) {
+        throw new Error(
+          `${manifestPath} appBundles path must end in .app: ${appBundle.path}`
+        );
+      }
     }
 
     libraries.push({
@@ -139,6 +189,7 @@ function discoverAutoLinkLibraries({ appDirectory, platform, arch }) {
       manifestPath,
       files,
       frameworks,
+      appBundles,
     });
   }
   return libraries;

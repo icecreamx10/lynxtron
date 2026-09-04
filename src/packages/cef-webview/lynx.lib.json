@@ -6,13 +6,31 @@
           "os": "darwin",
           "arch": "arm64",
           "files": ["dist/darwin/arm64/cef_extension.node"],
-          "frameworks": ["dist/darwin/arm64/frameworks"]
+          "frameworks": [
+            "dist/darwin/arm64/frameworks/Chromium Embedded Framework.framework"
+          ],
+          "appBundles": [
+            "dist/darwin/arm64/frameworks/LynxtronWebview Helper.app",
+            "dist/darwin/arm64/frameworks/LynxtronWebview Helper (Alerts).app",
+            "dist/darwin/arm64/frameworks/LynxtronWebview Helper (GPU).app",
+            "dist/darwin/arm64/frameworks/LynxtronWebview Helper (Plugin).app",
+            "dist/darwin/arm64/frameworks/LynxtronWebview Helper (Renderer).app"
+          ]
         },
         {
           "os": "darwin",
           "arch": "x64",
           "files": ["dist/darwin/x64/cef_extension.node"],
-          "frameworks": ["dist/darwin/x64/frameworks"]
+          "frameworks": [
+            "dist/darwin/x64/frameworks/Chromium Embedded Framework.framework"
+          ],
+          "appBundles": [
+            "dist/darwin/x64/frameworks/LynxtronWebview Helper.app",
+            "dist/darwin/x64/frameworks/LynxtronWebview Helper (Alerts).app",
+            "dist/darwin/x64/frameworks/LynxtronWebview Helper (GPU).app",
+            "dist/darwin/x64/frameworks/LynxtronWebview Helper (Plugin).app",
+            "dist/darwin/x64/frameworks/LynxtronWebview Helper (Renderer).app"
+          ]
         },
         {
           "os": "win32",
