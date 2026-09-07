@@ -41,9 +41,9 @@ runs:
         path: |
           lynxtron/.habitat_cache/objects
           !lynxtron/.habitat_cache/objects/cef-builds.spotifycdn.com/**
-        key: hab-objects-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-${{ hashFiles('lynxtron/.habitat', 'lynxtron/src/dependencies/DEPS', 'lynxtron/src/**/.habitat', 'lynxtron/lynxtron_tools/hab') }}
+        key: hab-objects-v3-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-${{ hashFiles('lynxtron/.habitat', 'lynxtron/src/dependencies/DEPS', 'lynxtron/src/**/.habitat', 'lynxtron/lynxtron_tools/hab') }}
         restore-keys: |
-          hab-objects-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-
+          hab-objects-v3-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-
 
     - name: run habitat sync
       if: ${{ inputs.run-habitat-sync == 'true' }}
