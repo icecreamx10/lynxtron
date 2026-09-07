@@ -7,6 +7,10 @@ inputs:
     description: concurrency of requests
     default: '2'
     required: false
+  cache-scope:
+    description: Isolated Habitat HTTP cache scope for this dependency graph
+    default: ''
+    required: false
   target:
     description: habitat target
     default: ''
@@ -23,6 +27,24 @@ inputs:
 runs:
   using: composite
   steps:
+    # Cache only immutable HTTP archives. Git mirrors are intentionally kept out
+    # of the action cache: they are mutable, much larger, and protected by the
+    # per-repository fetch transaction in habitat_lock.py.
+    #
+    # Keep narrow graphs (for example tools_shared in static-check) separate
+    # from full builds. A cache entry is immutable after an exact hit, so sharing
+    # one key allowed a narrow job to permanently seed an incomplete cache.
+    - name: Restore Habitat HTTP objects
+      if: ${{ inputs.cache-scope != '' }}
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        path: |
+          ~/.habitat_cache/objects
+          !~/.habitat_cache/objects/cef-builds.spotifycdn.com/**
+        key: hab-objects-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-${{ hashFiles('lynxtron/.habitat', 'lynxtron/src/dependencies/DEPS', 'lynxtron/src/**/.habitat', 'lynxtron/lynxtron_tools/hab') }}
+        restore-keys: |
+          hab-objects-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-
+
     - name: run habitat sync
       if: ${{ inputs.run-habitat-sync == 'true' }}
       shell: bash

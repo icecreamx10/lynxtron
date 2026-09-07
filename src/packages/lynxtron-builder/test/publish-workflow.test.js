@@ -293,6 +293,14 @@ test('macOS publish jobs preserve sibling architectures and cache CEF dependenci
   );
   assert.ok(cacheStep, 'CEF builds must restore and save the Habitat cache');
   assert.equal(cacheStep.with['run-habitat-sync'], 'false');
+  assert.equal(cacheStep.with['cache-scope'], 'full-build');
+
+  const cefObjectCacheStep = cefJob.steps.find(
+    (step) => step.name === 'Restore CEF Habitat objects'
+  );
+  assert.ok(cefObjectCacheStep);
+  assert.match(cefObjectCacheStep.with.path, /cef-builds\.spotifycdn\.com/);
+  assert.match(cefObjectCacheStep.with.key, /DEPS\.extension/);
 
   const prepareStep = cefJob.steps.find((step) => step.name === 'Prepare environment');
   assert.equal(prepareStep.env.HABITAT_CONCURRENCY, 2);
@@ -331,13 +339,27 @@ test('Windows builds use and validate the pinned resource compiler', () => {
   );
 });
 
-test('Habitat uses the persistent cache directly and serializes cache writers', () => {
-  assert.equal(
-    commonDepsAction.runs.steps.some(
-      (step) => typeof step.uses === 'string' && step.uses.includes('/cache@')
-    ),
-    false
+test('Habitat restores scoped immutable objects and serializes mutable Git writers', () => {
+  const objectCacheStep = commonDepsAction.runs.steps.find(
+    (step) => step.name === 'Restore Habitat HTTP objects'
   );
+  assert.ok(objectCacheStep);
+  assert.match(objectCacheStep.with.path, /\.habitat_cache\/objects/);
+  assert.doesNotMatch(objectCacheStep.with.path, /\.habitat_cache\/git/);
+  assert.match(objectCacheStep.with.key, /runner\.os/);
+  assert.match(objectCacheStep.with.key, /runner\.arch/);
+  assert.match(objectCacheStep.with.key, /inputs\.cache-scope/);
+
+  const staticCacheStep = ciJobs['static-check'].steps.find(
+    (step) => step.uses === './lynxtron/.github/actions/common-deps'
+  );
+  assert.equal(staticCacheStep.with['cache-scope'], 'tools-shared');
+
+  const windowsCommonDepsStep = windowsBuildAction.runs.steps.find(
+    (step) => step.uses === './lynxtron/.github/actions/common-deps'
+  );
+  assert.equal(windowsCommonDepsStep.with['cache-scope'], 'full-build');
+
   const syncStep = commonDepsAction.runs.steps.find(
     (step) => step.name === 'run habitat sync'
   );
