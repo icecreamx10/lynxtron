@@ -6,9 +6,17 @@
 
 import contextlib
 import os
+import shutil
 import subprocess
 import sys
 import time
+
+try:
+    from lynxtron_tools.git_cache_guard import restore_pending_snapshots
+except ModuleNotFoundError:
+    # habitat_lock.py is also invoked directly while the current directory is
+    # src/, in which case only lynxtron_tools/ itself is on sys.path.
+    from git_cache_guard import restore_pending_snapshots
 
 
 DEFAULT_LOCK_TIMEOUT_SECONDS = 30 * 60
@@ -54,6 +62,36 @@ def _unlock(lock_file):
 
 
 @contextlib.contextmanager
+def _git_cache_guard_environment(cache_dir):
+    """Route Habitat's Git commands through the per-repository cache guard."""
+    real_git = shutil.which("git")
+    if not real_git:
+        raise RuntimeError("git executable not found while preparing Habitat cache guard")
+
+    wrapper_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "git_cache_guard_bin")
+    previous = {
+        name: os.environ.get(name)
+        for name in ("PATH", "LYNXTRON_REAL_GIT", "LYNXTRON_HABITAT_CACHE_DIR")
+    }
+    os.environ["LYNXTRON_REAL_GIT"] = real_git
+    os.environ["LYNXTRON_HABITAT_CACHE_DIR"] = cache_dir
+    os.environ["PATH"] = wrapper_dir + os.pathsep + (previous["PATH"] or "")
+
+    restore_pending_snapshots(cache_dir)
+    try:
+        yield
+    finally:
+        # A failed Git fetch leaves its snapshot in place because Habitat deletes
+        # the repository after Git exits. Restore only after Habitat has returned.
+        restore_pending_snapshots(cache_dir)
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+@contextlib.contextmanager
 def habitat_cache_lock(description="Habitat sync"):
     """Hold an inter-process lock while a command may mutate Habitat's cache."""
     cache_dir = _cache_dir()
@@ -85,7 +123,8 @@ def habitat_cache_lock(description="Habitat sync"):
 
         print(f"Acquired shared Habitat cache lock for {description}: {lock_path}")
         try:
-            yield
+            with _git_cache_guard_environment(cache_dir):
+                yield
         finally:
             _unlock(lock_file)
             print(f"Released shared Habitat cache lock for {description}: {lock_path}")
