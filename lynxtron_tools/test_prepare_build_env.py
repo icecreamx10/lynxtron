@@ -43,7 +43,7 @@ class RunHabitatSyncTest(unittest.TestCase):
 
     @mock.patch.object(prepare_build_env.time, "sleep")
     @mock.patch.object(prepare_build_env.os, "system", side_effect=[1, 2, 0])
-    def test_retries_three_times_with_exponential_backoff(
+    def test_retries_until_success_with_exponential_backoff(
         self, system_mock, sleep_mock
     ):
         result = prepare_build_env.run_habitat_sync("hab sync", "sync test")
@@ -54,14 +54,16 @@ class RunHabitatSyncTest(unittest.TestCase):
 
     @mock.patch.object(prepare_build_env.time, "sleep")
     @mock.patch.object(prepare_build_env.os, "system", return_value=7)
-    def test_returns_last_failure_after_three_attempts(
+    def test_returns_last_failure_after_five_attempts(
         self, system_mock, sleep_mock
     ):
         result = prepare_build_env.run_habitat_sync("hab sync", "sync test")
 
         self.assertEqual(result, 7)
-        self.assertEqual(system_mock.call_count, 3)
-        sleep_mock.assert_has_calls([mock.call(10), mock.call(20)])
+        self.assertEqual(system_mock.call_count, 5)
+        sleep_mock.assert_has_calls(
+            [mock.call(10), mock.call(20), mock.call(40), mock.call(80)]
+        )
 
     @mock.patch.object(prepare_build_env.time, "sleep")
     @mock.patch.object(prepare_build_env.os, "system", return_value=0)
