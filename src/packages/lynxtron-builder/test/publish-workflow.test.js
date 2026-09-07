@@ -32,8 +32,23 @@ const windowsBuildActionPath = path.resolve(
 const windowsBuildAction = yaml.load(
   fs.readFileSync(windowsBuildActionPath, 'utf8')
 );
+const commonDepsActionPath = path.resolve(
+  __dirname,
+  '../../../../.github/actions/common-deps/action.yml'
+);
+const commonDepsAction = yaml.load(
+  fs.readFileSync(commonDepsActionPath, 'utf8')
+);
 const windowsEnvSetupSource = fs.readFileSync(
   path.resolve(__dirname, '../../../../lynxtron_tools/envsetup.ps1'),
+  'utf8'
+);
+const prepareBuildEnvSource = fs.readFileSync(
+  path.resolve(__dirname, '../../../../lynxtron_tools/prepare_build_env.py'),
+  'utf8'
+);
+const habitatLockSource = fs.readFileSync(
+  path.resolve(__dirname, '../../../../lynxtron_tools/habitat_lock.py'),
   'utf8'
 );
 
@@ -314,6 +329,46 @@ test('Windows builds use and validate the pinned resource compiler', () => {
       buildScript.indexOf('ninja.exe -C out\\Release lynxtron_app'),
     'resource compiler validation must run before the expensive build'
   );
+});
+
+test('Habitat uses the persistent cache directly and serializes cache writers', () => {
+  assert.equal(
+    commonDepsAction.runs.steps.some(
+      (step) => typeof step.uses === 'string' && step.uses.includes('/cache@')
+    ),
+    false
+  );
+  const syncStep = commonDepsAction.runs.steps.find(
+    (step) => step.name === 'run habitat sync'
+  );
+  assert.match(syncStep.run, /habitat_lock\.py/);
+  assert.match(prepareBuildEnvSource, /with habitat_cache_lock\(description\)/);
+  assert.match(habitatLockSource, /\.habitat_cache/);
+  assert.match(habitatLockSource, /LOCK_EX \| fcntl\.LOCK_NB/);
+  assert.match(habitatLockSource, /msvcrt\.LK_NBLCK/);
+});
+
+test('Windows serializes Habitat fetches and caches a verified CMake archive', () => {
+  const prepareStep = windowsBuildAction.runs.steps.find(
+    (step) => step.name === 'Prepare environment'
+  );
+  assert.equal(prepareStep.env.HABITAT_CONCURRENCY, '1');
+  assert.match(prepareBuildEnvSource, /os\.environ\.setdefault\("HABITAT_CONCURRENCY"/);
+
+  const cmakeCacheStep = windowsBuildAction.runs.steps.find(
+    (step) => step.name === 'Restore CMake'
+  );
+  assert.ok(cmakeCacheStep);
+  assert.equal(cmakeCacheStep.with.path, 'C:\\cmake');
+  assert.match(cmakeCacheStep.with.key, /runner\.arch/);
+  assert.match(cmakeCacheStep.with.key, /3\.30\.5/);
+
+  const buildStep = windowsBuildAction.runs.steps.find(
+    (step) => step.name === 'Build Lynxtron'
+  );
+  assert.match(buildStep.run, /Get-FileHash -Path \$cmakeZip -Algorithm SHA256/);
+  assert.match(buildStep.run, /for \(\$attempt = 1; \$attempt -le 3; \$attempt\+\+\)/);
+  assert.match(buildStep.run, /Using cached CMake/);
 });
 
 test('npm packages are published once without a legacy dev release channel', () => {

@@ -1,6 +1,7 @@
 # Copyright 2026 The Lynxtron Authors. All rights reserved.
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
+import contextlib
 import unittest
 from unittest import mock
 
@@ -9,7 +10,16 @@ from lynxtron_tools import prepare_build_env
 
 class RunHabitatSyncTest(unittest.TestCase):
 
-    def test_configures_two_concurrent_habitat_requests(self):
+    def setUp(self):
+        lock_patcher = mock.patch.object(
+            prepare_build_env,
+            "habitat_cache_lock",
+            return_value=contextlib.nullcontext(),
+        )
+        lock_patcher.start()
+        self.addCleanup(lock_patcher.stop)
+
+    def test_preserves_configured_habitat_concurrency(self):
         with mock.patch.dict(
             prepare_build_env.os.environ,
             {"HABITAT_CONCURRENCY": "99"},
@@ -17,10 +27,18 @@ class RunHabitatSyncTest(unittest.TestCase):
             prepare_build_env.configure_habitat_environment()
 
             self.assertEqual(
-                prepare_build_env.os.environ["HABITAT_CONCURRENCY"], "2"
+                prepare_build_env.os.environ["HABITAT_CONCURRENCY"], "99"
             )
             self.assertEqual(
                 prepare_build_env.os.environ["GIT_LFS_SKIP_SMUDGE"], "1"
+            )
+
+    def test_defaults_to_two_concurrent_habitat_requests(self):
+        with mock.patch.dict(prepare_build_env.os.environ, {}, clear=True):
+            prepare_build_env.configure_habitat_environment()
+
+            self.assertEqual(
+                prepare_build_env.os.environ["HABITAT_CONCURRENCY"], "2"
             )
 
     @mock.patch.object(prepare_build_env.time, "sleep")

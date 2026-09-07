@@ -609,7 +609,7 @@ jobs:
           # Sync CEF binary distribution required by cef-webview CMakeLists.
           cd ${{ github.workspace }}/lynxtron/src
           for attempt in 1 2 3; do
-            if "${{ github.workspace }}/lynxtron/lynxtron_tools/hab" sync . -f --no-history --target extension --target-only; then
+            if python3 "${{ github.workspace }}/lynxtron/lynxtron_tools/habitat_lock.py" -- "${{ github.workspace }}/lynxtron/lynxtron_tools/hab" sync . -f --no-history --target extension --target-only; then
               break
             fi
             if [ "$attempt" -eq 3 ]; then

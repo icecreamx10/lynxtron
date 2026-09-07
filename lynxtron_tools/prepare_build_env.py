@@ -12,9 +12,9 @@ COLORED_GREEN_MSG = '\033[32m'
 
 COLORED_PRINT_END = '\033[0m'
 
-HABITAT_CONCURRENCY = "2"
-HABITAT_SYNC_ATTEMPTS = 3
-HABITAT_RETRY_BASE_DELAY_SECONDS = 10
+DEFAULT_HABITAT_CONCURRENCY = "2"
+DEFAULT_HABITAT_SYNC_ATTEMPTS = 3
+DEFAULT_HABITAT_RETRY_BASE_DELAY_SECONDS = 10
 
 # Get the directory where the current script is located
 current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -23,35 +23,48 @@ root_dir = os.path.abspath(os.path.join(current_dir, '..'))
 print(f"root_dir: {root_dir}")
 sys.path.append(root_dir)
 from src.script.abort_am_sessions import abort_am_sessions
+from lynxtron_tools.habitat_lock import habitat_cache_lock
 src_dir = os.path.join(root_dir, "src")
 print(f"src_dir: {src_dir}")
 
 
 def run_habitat_sync(command, description):
     """Run a Habitat sync with bounded exponential-backoff retries."""
+    attempts = int(os.environ.get("HABITAT_SYNC_ATTEMPTS", DEFAULT_HABITAT_SYNC_ATTEMPTS))
+    base_delay = int(
+        os.environ.get(
+            "HABITAT_RETRY_BASE_DELAY_SECONDS",
+            DEFAULT_HABITAT_RETRY_BASE_DELAY_SECONDS,
+        )
+    )
     return_code = 0
-    for attempt in range(1, HABITAT_SYNC_ATTEMPTS + 1):
-        return_code = os.system(command)
+    for attempt in range(1, attempts + 1):
+        with habitat_cache_lock(description):
+            return_code = os.system(command)
         if return_code == 0:
             return 0
-        if attempt < HABITAT_SYNC_ATTEMPTS:
-            delay = HABITAT_RETRY_BASE_DELAY_SECONDS * (2 ** (attempt - 1))
+        if attempt < attempts:
+            delay = base_delay * (2 ** (attempt - 1))
             print(
                 f"{COLORED_YELLOW_MSG}{description} failed "
-                f"(attempt {attempt}/{HABITAT_SYNC_ATTEMPTS}, return_code={return_code}); "
+                f"(attempt {attempt}/{attempts}, return_code={return_code}); "
                 f"retrying in {delay} seconds...{COLORED_PRINT_END}"
             )
             time.sleep(delay)
     print(
         f"{COLORED_RED_MSG}{description} failed after "
-        f"{HABITAT_SYNC_ATTEMPTS} attempts{COLORED_PRINT_END}"
+        f"{attempts} attempts{COLORED_PRINT_END}"
     )
     return return_code
 
 
 def configure_habitat_environment():
     os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
-    os.environ["HABITAT_CONCURRENCY"] = HABITAT_CONCURRENCY
+    os.environ.setdefault("HABITAT_CONCURRENCY", DEFAULT_HABITAT_CONCURRENCY)
+    print(
+        f"{COLORED_YELLOW_MSG}Habitat concurrency: "
+        f"{os.environ['HABITAT_CONCURRENCY']}{COLORED_PRINT_END}"
+    )
 
 
 def main():
