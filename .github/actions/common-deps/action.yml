@@ -39,8 +39,8 @@ runs:
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
       with:
         path: |
-          ~/.habitat_cache/objects
-          !~/.habitat_cache/objects/cef-builds.spotifycdn.com/**
+          lynxtron/.habitat_cache/objects
+          !lynxtron/.habitat_cache/objects/cef-builds.spotifycdn.com/**
         key: hab-objects-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-${{ hashFiles('lynxtron/.habitat', 'lynxtron/src/dependencies/DEPS', 'lynxtron/src/**/.habitat', 'lynxtron/lynxtron_tools/hab') }}
         restore-keys: |
           hab-objects-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache-scope }}-
@@ -52,12 +52,13 @@ runs:
       run: |
         set -x
         if [[ "${{ inputs.target }}" == "" ]]; then
-          python3 ${{ github.workspace }}/lynxtron/lynxtron_tools/habitat_lock.py -- ${{ github.workspace }}/lynxtron/lynxtron_tools/hab sync .
+          python3 ${{ github.workspace }}/lynxtron/lynxtron_tools/habitat_lock.py -- ${{ github.workspace }}/lynxtron/lynxtron_tools/hab sync . --cache-dir "$HABITAT_CACHE_DIR"
         elif [[ "${{ inputs.target_only }}" == "true" ]]; then
-          python3 ${{ github.workspace }}/lynxtron/lynxtron_tools/habitat_lock.py -- ${{ github.workspace }}/lynxtron/lynxtron_tools/hab sync . --target ${{ inputs.target }} --target-only
+          python3 ${{ github.workspace }}/lynxtron/lynxtron_tools/habitat_lock.py -- ${{ github.workspace }}/lynxtron/lynxtron_tools/hab sync . --cache-dir "$HABITAT_CACHE_DIR" --target ${{ inputs.target }} --target-only
         else
-          python3 ${{ github.workspace }}/lynxtron/lynxtron_tools/habitat_lock.py -- ${{ github.workspace }}/lynxtron/lynxtron_tools/hab sync . --target ${{ inputs.target }}
+          python3 ${{ github.workspace }}/lynxtron/lynxtron_tools/habitat_lock.py -- ${{ github.workspace }}/lynxtron/lynxtron_tools/hab sync . --cache-dir "$HABITAT_CACHE_DIR" --target ${{ inputs.target }}
         fi
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
+        HABITAT_CACHE_DIR: ${{ github.workspace }}/lynxtron/.habitat_cache
         GIT_LFS_SKIP_SMUDGE: 1

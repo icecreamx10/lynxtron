@@ -300,6 +300,7 @@ test('macOS publish jobs preserve sibling architectures and cache CEF dependenci
   );
   assert.ok(cefObjectCacheStep);
   assert.match(cefObjectCacheStep.with.path, /cef-builds\.spotifycdn\.com/);
+  assert.match(cefObjectCacheStep.with.path, /^lynxtron\//);
   assert.match(cefObjectCacheStep.with.key, /DEPS\.extension/);
 
   const prepareStep = cefJob.steps.find((step) => step.name === 'Prepare environment');
@@ -345,6 +346,7 @@ test('Habitat restores scoped immutable objects and serializes mutable Git write
   );
   assert.ok(objectCacheStep);
   assert.match(objectCacheStep.with.path, /\.habitat_cache\/objects/);
+  assert.match(objectCacheStep.with.path, /^lynxtron\//);
   assert.doesNotMatch(objectCacheStep.with.path, /\.habitat_cache\/git/);
   assert.match(objectCacheStep.with.key, /runner\.os/);
   assert.match(objectCacheStep.with.key, /runner\.arch/);
@@ -364,7 +366,10 @@ test('Habitat restores scoped immutable objects and serializes mutable Git write
     (step) => step.name === 'run habitat sync'
   );
   assert.match(syncStep.run, /habitat_lock\.py/);
+  assert.match(syncStep.run, /--cache-dir/);
+  assert.match(syncStep.env.HABITAT_CACHE_DIR, /github\.workspace/);
   assert.match(prepareBuildEnvSource, /with habitat_cache_lock\(description\)/);
+  assert.match(prepareBuildEnvSource, /--cache-dir/);
   assert.match(habitatLockSource, /\.habitat_cache/);
   assert.match(habitatLockSource, /LOCK_EX \| fcntl\.LOCK_NB/);
   assert.match(habitatLockSource, /msvcrt\.LK_NBLCK/);

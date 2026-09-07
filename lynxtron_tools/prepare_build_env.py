@@ -61,6 +61,13 @@ def run_habitat_sync(command, description):
 def configure_habitat_environment():
     os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
     os.environ.setdefault("HABITAT_CONCURRENCY", DEFAULT_HABITAT_CONCURRENCY)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        # Keep Habitat and the cache action on the same cross-platform path.
+        # Habitat falls back to the temp directory when HOME is unset on
+        # Windows, while the cache action expands '~' through USERPROFILE.
+        os.environ.setdefault(
+            "HABITAT_CACHE_DIR", os.path.join(root_dir, ".habitat_cache")
+        )
     print(
         f"{COLORED_YELLOW_MSG}Habitat concurrency: "
         f"{os.environ['HABITAT_CONCURRENCY']}{COLORED_PRINT_END}"
@@ -81,6 +88,12 @@ def main():
         python3 = "python3"
 
     configure_habitat_environment()
+    habitat_cache_dir = os.path.realpath(
+        os.path.expandvars(
+            os.path.expanduser(os.environ.get("HABITAT_CACHE_DIR", "~/.habitat_cache"))
+        )
+    )
+    habitat_cache_arg = f'--cache-dir "{habitat_cache_dir}"'
     print(f"{COLORED_YELLOW_MSG}hab: {hab}{COLORED_PRINT_END}")
     print(f"{COLORED_YELLOW_MSG}envsetup: {envsetup}{COLORED_PRINT_END}")
     print(f"{COLORED_GREEN_MSG}abort am sessions............{COLORED_PRINT_END}")
@@ -88,35 +101,35 @@ def main():
     print(f"{COLORED_YELLOW_MSG}sync lynxtron dependencies............{COLORED_PRINT_END}")
     os.chdir(src_dir)
     if system == "windows":
-        sync_lynxtron_cmd = f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history --target lynxtron"
+        sync_lynxtron_cmd = f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history {habitat_cache_arg} --target lynxtron"
     else:
-        sync_lynxtron_cmd = f"\"{hab}\" sync . -f --no-history --target lynxtron"
+        sync_lynxtron_cmd = f"\"{hab}\" sync . -f --no-history {habitat_cache_arg} --target lynxtron"
     return_code = run_habitat_sync(sync_lynxtron_cmd, "sync lynxtron dependencies")
     if return_code != 0:
         print(f"{COLORED_YELLOW_MSG}sync lynxtron dependencies failed, exit{COLORED_PRINT_END}")
         return return_code
     print(f"{COLORED_YELLOW_MSG}sync tools dependencies............{COLORED_PRINT_END}")
     if system == "windows":
-        sync_tools_cmd = f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history --target tools --target-only"
+        sync_tools_cmd = f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history {habitat_cache_arg} --target tools --target-only"
     else:
-        sync_tools_cmd = f"\"{hab}\" sync . -f --no-history --target tools --target-only"
+        sync_tools_cmd = f"\"{hab}\" sync . -f --no-history {habitat_cache_arg} --target tools --target-only"
     return_code = run_habitat_sync(sync_tools_cmd, "sync tools dependencies")
     if return_code != 0:
         print(f"{COLORED_YELLOW_MSG}sync tools dependencies failed, exit{COLORED_PRINT_END}")
         return return_code
     if system == "windows":
-        sync_tools_shared_cmd = f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history --target tools_shared --target-only"
+        sync_tools_shared_cmd = f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history {habitat_cache_arg} --target tools_shared --target-only"
     else:
-        sync_tools_shared_cmd = f"\"{hab}\" sync . -f --no-history --target tools_shared --target-only"
+        sync_tools_shared_cmd = f"\"{hab}\" sync . -f --no-history {habitat_cache_arg} --target tools_shared --target-only"
     return_code = run_habitat_sync(sync_tools_shared_cmd, "sync tools_shared dependencies")
     if return_code != 0:
         print(f"{COLORED_YELLOW_MSG}sync tools_shared dependencies failed, exit{COLORED_PRINT_END}")
         return return_code
     print(f"{COLORED_YELLOW_MSG}sync lynx dependencies............{COLORED_PRINT_END}")
     if system == "windows":
-        lynx_sync_cmd = f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history --target lynx --target-only"
+        lynx_sync_cmd = f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history {habitat_cache_arg} --target lynx --target-only"
     else:
-        lynx_sync_cmd = f"\"{hab}\" sync . -f --no-history --target lynx --target-only"
+        lynx_sync_cmd = f"\"{hab}\" sync . -f --no-history {habitat_cache_arg} --target lynx --target-only"
     return_code = run_habitat_sync(lynx_sync_cmd, "sync lynx dependencies")
     if return_code != 0:
         print(f"{COLORED_RED_MSG}sync lynx dependencies failed, exit{COLORED_PRINT_END}")
@@ -129,7 +142,7 @@ def main():
             os.chdir(skity_dir)
             print(f"{COLORED_YELLOW_MSG}sync skity dependencies............{COLORED_PRINT_END}")
             return_code = run_habitat_sync(
-                f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history",
+                f"powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File \"{hab}\" sync . -f --no-history {habitat_cache_arg}",
                 "sync skity dependencies",
             )
             if return_code != 0:

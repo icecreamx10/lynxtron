@@ -2,6 +2,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 import contextlib
+import os
 import unittest
 from unittest import mock
 
@@ -39,6 +40,17 @@ class RunHabitatSyncTest(unittest.TestCase):
 
             self.assertEqual(
                 prepare_build_env.os.environ["HABITAT_CONCURRENCY"], "2"
+            )
+
+    def test_uses_checkout_relative_habitat_cache_in_github_actions(self):
+        with mock.patch.dict(
+            prepare_build_env.os.environ, {"GITHUB_ACTIONS": "true"}, clear=True
+        ):
+            prepare_build_env.configure_habitat_environment()
+
+            self.assertEqual(
+                prepare_build_env.os.environ["HABITAT_CACHE_DIR"],
+                os.path.join(prepare_build_env.root_dir, ".habitat_cache"),
             )
 
     @mock.patch.object(prepare_build_env.time, "sleep")
