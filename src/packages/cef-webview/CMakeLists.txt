@@ -96,6 +96,7 @@ add_subdirectory(${CEF_PLUGIN_SRC_DIR} cef_webview)
 set(CEF_EXTENSION_TARGET "cef_extension")
 set(CEF_EXTENSION_SRCS
   bindings/bind_napi.cc
+  bindings/register_webview.cc
   )
 
 add_library(${CEF_EXTENSION_TARGET} SHARED ${CEF_EXTENSION_SRCS})
@@ -106,6 +107,7 @@ if(MSVC)
   target_compile_options(${CEF_EXTENSION_TARGET} PRIVATE /FS)
 endif()
 target_include_directories(${CEF_EXTENSION_TARGET} PRIVATE
+  ${LYNX_LIBRARY_HEADERS_DIR}/include
   ${CMAKE_JS_INC}
   ${NODE_ADDON_API_DIR}
   ${PROJECT_ROOT_DIR}
