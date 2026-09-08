@@ -3,8 +3,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { createRequire } from 'node:module';
 import { resolveLynxtronAutoLinks } from '../dist/autolink.js';
 import { applyLynxtronAutoLink } from '../dist/autolink-rspack.js';
+
+const require = createRequire(import.meta.url);
+const {
+  prepareAutoLinkPackaging,
+} = require('../../lynxtron-builder/autolink-packaging.js');
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lynxtron-manifest-'));
@@ -55,7 +61,7 @@ for (const [platform, arch] of [
   ['darwin', 'arm64'],
   ['win32', 'x64'],
 ]) {
-  test(`fixed manifest survives resolve and stage unchanged: ${platform}/${arch}`, (t) => {
+  test(`fixed manifest survives resolve, stage and pack unchanged: ${platform}/${arch}`, (t) => {
     const f = fixture(t);
     f.write();
     const original = fs.readFileSync(path.join(f.pkg, 'lynx.lib.json'), 'utf8');
@@ -94,6 +100,13 @@ for (const [platform, arch] of [
       ),
       original
     );
+    const result = prepareAutoLinkPackaging({
+      config: { directories: { app: 'output' } },
+      projectRoot: f.root,
+      platform,
+      arch,
+    });
+    assert.equal(result.libraries.length, 1);
   });
 }
 
@@ -152,7 +165,7 @@ const invalid = [
 ];
 
 for (const [name, mutate, error] of invalid) {
-  test(`dev-plugin rejects ${name}, even in an unselected target`, (t) => {
+  test(`both consumers reject ${name}, even in an unselected target`, (t) => {
     const f = fixture(t);
     mutate(f.manifest.platforms.lynxtron.targets[1]);
     f.write();
@@ -160,6 +173,23 @@ for (const [name, mutate, error] of invalid) {
       () =>
         resolveLynxtronAutoLinks({
           root: f.root,
+          platform: 'darwin',
+          arch: 'arm64',
+        }),
+      error
+    );
+    // Model a package already present in staging, bypassing the dev-plugin.
+    const staged = path.join(
+      f.root,
+      'output/.lynxtron/native/node_modules/fixture'
+    );
+    fs.mkdirSync(path.dirname(staged), { recursive: true });
+    fs.cpSync(f.pkg, staged, { recursive: true });
+    assert.throws(
+      () =>
+        prepareAutoLinkPackaging({
+          config: { directories: { app: 'output' } },
+          projectRoot: f.root,
           platform: 'darwin',
           arch: 'arm64',
         }),

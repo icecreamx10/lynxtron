@@ -24,6 +24,10 @@ and selects its addon from the literal target paths in `lynx.lib.json`.
 The manifest also declares the CEF Framework/helper bundles on macOS and the
 DLLs, subprocess and resource files on Windows for development staging.
 
+When packaging the app, lynxtron-builder places the declared macOS Framework
+and helper app bundles in `Contents/Frameworks` before signing. Windows native
+runtime files remain adjacent to the addon outside ASAR.
+
 ```ts
 import cefWebview from '@lynx-js/cef-webview/lynxtron';
 
