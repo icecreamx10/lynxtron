@@ -56,6 +56,34 @@ class FingerprintTest(unittest.TestCase):
             changed_sdk = fingerprint(build, "probe", [compiler], "other-sdk")
             self.assertNotEqual(flags["fingerprint"], changed_sdk["fingerprint"])
 
+            # A new optional include is absent from the *old* dependency log.
+            # Demonstrate the unsafe hit rather than pretending the graph is
+            # sufficient for cache authorization.
+            (root / "main.c").write_text(
+                '#if __has_include("optional.h")\n#include "optional.h"\n'
+                '#else\n#define OPTIONAL 0\n#endif\n'
+                'int main(void) { return OPTIONAL; }\n')
+            before_optional = compile_and_hash()
+            (root / "optional.h").write_text('#define OPTIONAL 3\n')
+            undiscovered = fingerprint(build, "probe", [compiler], "local-test")
+            self.assertEqual(before_optional, undiscovered,
+                             "Documents the known dependency-discovery hole")
+            # Ninja timestamp checking also cannot detect a formerly absent
+            # header. Force recompilation by changing a tracked source.
+            with (root / "main.c").open("a") as source_file:
+                source_file.write("// force dependency rediscovery\n")
+            discovered = compile_and_hash()
+            self.assertTrue(any(p.endswith("optional.h")
+                                for p in discovered["manifest"]["files"]))
+            self.assertEqual(subprocess.run([str(build / "probe")]).returncode, 3)
+
+            cold = root / "cold-build"
+            subprocess.run(["cmake", "-S", str(root), "-B", str(cold),
+                            "-G", "Ninja", f"-DCMAKE_C_COMPILER={compiler}",
+                            "-DFLAG=1"], check=True, stdout=subprocess.DEVNULL)
+            with self.assertRaisesRegex(ValueError, "Build first"):
+                fingerprint(cold, "probe", [compiler], "local-test")
+
 
 if __name__ == "__main__":
     unittest.main()
