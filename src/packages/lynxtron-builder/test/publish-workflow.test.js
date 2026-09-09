@@ -14,7 +14,7 @@ const releaseWorkflowPath = path.resolve(
 );
 const releaseWorkflow = yaml.load(fs.readFileSync(releaseWorkflowPath, 'utf8'));
 const changesetConfig = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, '../../../.changeset/config.json'), 'utf8')
+  fs.readFileSync(path.resolve(__dirname, '../../../../.changeset/config.json'), 'utf8')
 );
 const workspacePackage = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8')
@@ -121,8 +121,16 @@ test('Changesets creates a version PR and publishes an unpublished stable versio
     (step) => step.uses === 'changesets/action@v1'
   );
   assert.equal(actionStep.id, 'changesets');
-  assert.equal(actionStep.with.cwd, 'src');
-  assert.equal(actionStep.with.version, 'node tools/yarn.js version-packages');
+  assert.equal(actionStep.with.cwd, undefined);
+  assert.equal(actionStep.with.version, 'npm run version-packages');
+  const releasePackage = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, '../../../../package.json'), 'utf8')
+  );
+  assert.equal(releasePackage.private, true);
+  assert.deepEqual(
+    releasePackage.workspaces,
+    workspacePackage.workspaces.map((workspace) => `src/${workspace}`)
+  );
 
   const releaseStep = changesetJob.steps.find(
     (step) => step.name === 'Select stable release'
@@ -154,7 +162,7 @@ test('all packages published by the runtime workflow use one Changesets version'
     'lynxtron-dev-plugins',
     'lynxtron-rebuild',
   ];
-  assert.equal(changesetConfig.changelog, '@changesets/cli/changelog');
+  assert.equal(changesetConfig.changelog, '../src/node_modules/@changesets/cli/changelog');
   assert.deepEqual(changesetConfig.fixed, [[
     '@lynx-js/cef-webview',
     '@lynx-js/lynx-library-headers',

@@ -23,9 +23,9 @@
     "wrapper-webpack-plugin": "^2.2.0"
   },
   "scripts": {
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "changeset publish",
+    "changeset": "cd .. && npm run changeset --",
+    "version-packages": "cd .. && npm run version-packages --",
+    "release": "cd .. && npm run release --",
     "generate-version-json": "node script/generate-version-json.js",
     "pre-flight": "pre-flight",
     "tsc": "tsc",

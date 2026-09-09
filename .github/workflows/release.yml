@@ -36,8 +36,7 @@ jobs:
         id: changesets
         uses: changesets/action@v1
         with:
-          cwd: src
-          version: node tools/yarn.js version-packages
+          version: npm run version-packages
           title: 'chore: version packages'
           commit: 'chore: version packages'
       - name: Select stable release
