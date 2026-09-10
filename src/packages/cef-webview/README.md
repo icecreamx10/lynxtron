@@ -34,10 +34,21 @@ import cefWebview from '@lynx-js/cef-webview/lynxtron';
 cefWebview.initialize();
 ```
 
-Once initialized, you can use the `<webview>` element in your Lynx templates:
+`initialize()` throws if native CEF initialization returns `false`. Do not
+continue creating WebViews after this error. The current implementation shares
+the default CEF storage directory across host applications, so only one host
+process can initialize the CEF browser at a time. That process can create multiple
+WebViews; CEF helper subprocesses are not additional browser host processes.
+Close other applications running WebView and retry. This is not the only possible
+cause of initialization failure; check the native logs for the actual cause.
 
-```xml
-<webview src="https://www.example.com" width="100%" height="500px"></webview>
+Once initialized, you can use the `<webview>` element in your ReactLynx components:
+
+```tsx
+<webview
+  src="https://www.example.com"
+  style={{ width: '100%', height: '500px' }}
+/>
 ```
 
 ## Building

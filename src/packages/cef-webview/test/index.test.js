@@ -19,7 +19,7 @@ const manifest = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, '../lynx.lib.json'), 'utf8')
 );
 
-function loadEntry({ platform, arch, manifest }) {
+function loadEntry({ platform, arch, manifest, initialize }) {
   const module = { exports: {} };
   const loadedPaths = [];
   const context = {
@@ -37,6 +37,7 @@ function loadEntry({ platform, arch, manifest }) {
       loadedPaths.push(specifier);
       return {
         initialize(options) {
+          if (initialize) return initialize(options);
           return { options, platform, arch };
         },
       };
@@ -45,6 +46,47 @@ function loadEntry({ platform, arch, manifest }) {
 
   vm.runInNewContext(entrySource, context, { filename: 'index.cjs' });
   return { entry: module.exports, loadedPaths, process: context.process };
+}
+
+for (const [platform, arch] of [
+  ['darwin', 'arm64'],
+  ['win32', 'x64'],
+]) {
+  test(`${platform}: reports native initialization failure with actionable guidance`, () => {
+    const { entry } = loadEntry({
+      platform,
+      arch,
+      manifest,
+      initialize: () => false,
+    });
+    assert.throws(() => entry.initialize(), {
+      message:
+        /CEF initialization failed.*multiple host processes.*Close other applications.*other reasons.*native logs/,
+    });
+  });
+
+  test(`${platform}: preserves successful initialization and native exceptions`, () => {
+    const options = { cachePath: 'cache' };
+    const failure = new Error('native failure');
+    let calls = 0;
+    const { entry } = loadEntry({
+      platform,
+      arch,
+      manifest,
+      initialize(value) {
+        assert.equal(value, options);
+        if (++calls === 3) throw failure;
+        return true;
+      },
+    });
+    assert.equal(entry.initialize(options), true);
+    assert.equal(entry.initialize(options), true);
+    assert.throws(
+      () => entry.initialize(options),
+      (error) => error === failure
+    );
+    assert.equal(calls, 3);
+  });
 }
 
 test('loads the Windows x64 binary selected by lynx.lib.json', () => {
@@ -127,10 +169,7 @@ test('macOS metadata publishes the package-owned CEF bundles', () => {
     'dist/darwin/arm64/frameworks/LynxtronWebview Helper (Plugin).app',
     'dist/darwin/arm64/frameworks/LynxtronWebview Helper (Renderer).app',
   ]);
-  assert.match(
-    cmakeSource,
-    /set\(CEF_WEBVIEW_HELPER_NAME "LynxtronWebview"\)/
-  );
+  assert.match(cmakeSource, /set\(CEF_WEBVIEW_HELPER_NAME "LynxtronWebview"\)/);
   assert.match(
     cmakeSource,
     /set\(CEF_WEBVIEW_HELPER_BUNDLE_ID "org\.lynxjs\.lynxtron\.webview\.helper"\)/
