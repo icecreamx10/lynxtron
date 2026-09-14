@@ -16,6 +16,8 @@ Read the docs below in advance to help you understand the library or frameworks 
 
   If `agent-lynx` is already available on `PATH`, omit the `npx --yes` prefix.
 
+  If the session list is empty on the first CLI connection to a DevTool-enabled desktop app, **quit and restart the app**. The CLI enables DevTool when it connects, but existing windows need to be recreated. Run `agent-lynx list-clients` again after restarting and select the current client address.
+
 ## Overview
 
 - Lynxtron is an Electron-like runtime where `BrowserWindow` is replaced by `LynxWindow`.
