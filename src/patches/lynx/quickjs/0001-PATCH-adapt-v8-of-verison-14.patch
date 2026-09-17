@@ -40,7 +40,7 @@ diff --git a/src/napi/v8/js_native_api_v8.cc.h b/src/napi/v8/js_native_api_v8.cc
 index 2841d75..1b1217c 100644
 --- a/src/napi/v8/js_native_api_v8.cc.h
 +++ b/src/napi/v8/js_native_api_v8.cc.h
-@@ -1039,8 +1039,7 @@ napi_status napi_define_class(napi_env env, const char* utf8name, size_t length,
+@@ -1031,8 +1031,7 @@ napi_status napi_define_class(napi_env env, const char* utf8name, size_t length,
        }
  
        tpl->PrototypeTemplate()->SetAccessorProperty(property_name, getter_tpl,
@@ -49,6 +49,7 @@ index 2841d75..1b1217c 100644
 +                                                    setter_tpl, attributes);
      } else if (p->method != nullptr) {
        v8::Local<v8::Value> cbdata =
-           primjs::v8impl::CreateFunctionCallbackData(env, p->method, p->data);
+           v8impl::CreateFunctionCallbackData(env, p->method, p->data);
 -- 
 2.49.0
+

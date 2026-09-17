@@ -32,7 +32,6 @@
 #include <shellapi.h>
 
 #include "base/functional/bind.h"
-#include "lynx/platform/embedder/public/capi/lynx_env_capi.h"
 #include "shell/app/application.h"
 #include "shell/common/global_thread.h"
 
@@ -121,19 +120,6 @@ int LynxtronMain(int argc, char* argv[]) {
   lynxtron::InitLogging(*base::CommandLine::ForCurrentProcess(),
                         /* is_preinit = */ true);
 
-  const bool run_as_node = IsRunAsNode();
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  const std::string process_type =
-      command_line->GetSwitchValueASCII(kProcessType);
-#if BUILDFLAG(IS_WIN)
-  if (!run_as_node && process_type.empty()) {
-    // Overlap D3D11 device creation with ICU and Node/V8 startup. The request
-    // is optional: the first view falls back to synchronous creation if it
-    // fails.
-    lynx_env_prewarm_async();
-  }
-#endif
-
 #if BUILDFLAG(IS_MAC)
   base::apple::SetOverrideFrameworkBundlePath(
       lynxtron::MainApplicationBundlePath()
@@ -151,11 +137,14 @@ int LynxtronMain(int argc, char* argv[]) {
   base::debug::VerifyDebugger();
 #endif  // !defined(OFFICIAL_BUILD)
 
-  if (run_as_node) {
+  if (IsRunAsNode()) {
     return lynxtron::RunNodeMain();
   }
 
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   constexpr char kRelauncherProcess[] = "relauncher";
+  const std::string process_type =
+      command_line->GetSwitchValueASCII(kProcessType);
   if (process_type == kRelauncherProcess) {
     return relauncher::RelauncherMain();
   }
