@@ -15,6 +15,7 @@
 #if defined(ADDRESS_SANITIZER)
 #include "base/debug/asan_service.h"
 #endif
+#include "lynx/platform/embedder/public/capi/lynx_env_capi.h"
 #include "shell/app/main_runner.h"
 #include "shell/app/relauncher.h"
 #include "shell/common/fuses.h"
@@ -120,6 +121,16 @@ int LynxtronMain(int argc, char* argv[]) {
   lynxtron::InitLogging(*base::CommandLine::ForCurrentProcess(),
                         /* is_preinit = */ true);
 
+  const bool run_as_node = IsRunAsNode();
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  const std::string process_type =
+      command_line->GetSwitchValueASCII(kProcessType);
+  if (!run_as_node && process_type.empty()) {
+    // Overlap optional platform resource preparation with ICU and Node/V8
+    // startup. The engine handles platform support and synchronous fallback.
+    lynx_env_prewarm_async();
+  }
+
 #if BUILDFLAG(IS_MAC)
   base::apple::SetOverrideFrameworkBundlePath(
       lynxtron::MainApplicationBundlePath()
@@ -137,14 +148,11 @@ int LynxtronMain(int argc, char* argv[]) {
   base::debug::VerifyDebugger();
 #endif  // !defined(OFFICIAL_BUILD)
 
-  if (IsRunAsNode()) {
+  if (run_as_node) {
     return lynxtron::RunNodeMain();
   }
 
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   constexpr char kRelauncherProcess[] = "relauncher";
-  const std::string process_type =
-      command_line->GetSwitchValueASCII(kProcessType);
   if (process_type == kRelauncherProcess) {
     return relauncher::RelauncherMain();
   }
