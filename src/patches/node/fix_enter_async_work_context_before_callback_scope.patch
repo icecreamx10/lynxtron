@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Wang Zhixuan <201550585+icecreamx10@users.noreply.github.com>
+Date: Fri, 18 Sep 2026 20:20:27 +0800
+Subject: fix: enter async work context before callback scope
+
+
+diff --git a/src/node_api.cc b/src/node_api.cc
+index 2769997f0ede0e921fcb8826942609e497e5f9cb..f642744c006ebc3ec8e887acb1e055c690e4c1dc 100644
+--- a/src/node_api.cc
++++ b/src/node_api.cc
+@@ -1206,6 +1206,7 @@ class Work : public node::AsyncResource, public node::ThreadPoolWork {
+     // Establish a handle scope here so that every callback doesn't have to.
+     // Also it is needed for the exception-handling below.
+     v8::HandleScope scope(_env->isolate);
++    v8::Context::Scope context_scope(_env->context());
+ 
+     CallbackScope callback_scope(this);
+ 
