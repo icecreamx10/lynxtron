@@ -12,7 +12,11 @@ const {
   resolveConfiguredArchitectures,
 } = require('../runtime-config.js');
 
-function prepare({ config = {}, args = [], env = {}, arch } = {}) {
+function filename(result) {
+  return runtimeArtifacts.getRuntimeArtifactFilename({ version: result.version, platform: result.platform, arch: result.arch, variant: result.variant });
+}
+
+function prepare({ config = {}, args = [], env = {}, arch, runtimeDistribution = 'npm' } = {}) {
   return prepareRuntimeConfig({
     config,
     args,
@@ -21,6 +25,7 @@ function prepare({ config = {}, args = [], env = {}, arch } = {}) {
     platform: 'darwin',
     defaultArch: 'arm64',
     lynxtronVersion: '1.2.3',
+    runtimeDistribution,
     runtimeArtifacts,
   });
 }
@@ -28,14 +33,15 @@ function prepare({ config = {}, args = [], env = {}, arch } = {}) {
 test('builder defaults to the release runtime', () => {
   const result = prepare();
   assert.equal(result.variant, 'release');
-  assert.equal(result.config.electronDownload.customFilename, 'lynxtron-v1.2.3-darwin-arm64.zip');
+  assert.equal(result.useNpmRuntime, true);
+  assert.equal(filename(result), 'lynxtron-v1.2.3-darwin-arm64.zip');
 });
 
 test('electron-builder yml can select DevTool and custom config is stripped', () => {
   const result = prepare({ config: { lynxtron: { runtimeVariant: 'devtool' } } });
   assert.equal(result.variant, 'devtool');
   assert.equal(result.config.lynxtron, undefined);
-  assert.equal(result.config.electronDownload.customFilename, 'lynxtron-v1.2.3-darwin-arm64-devtool.zip');
+  assert.equal(filename(result), 'lynxtron-v1.2.3-darwin-arm64-devtool.zip');
 });
 
 test('CLI overrides environment and yml and is not forwarded', () => {
@@ -46,36 +52,33 @@ test('CLI overrides environment and yml and is not forwarded', () => {
   });
   assert.equal(result.variant, 'release');
   assert.deepEqual(result.forwardedArgs, ['--mac', '--x64']);
-  assert.equal(result.config.electronDownload.customFilename, 'lynxtron-v1.2.3-darwin-x64.zip');
+  assert.equal(filename(result), 'lynxtron-v1.2.3-darwin-x64.zip');
 });
 
-test('environment overrides yml and supports DevTool MAS artifacts', () => {
-  const result = prepare({
-    config: { lynxtron: { runtimeVariant: 'release' } },
-    args: ['--mas'],
-    env: { LYNXTRON_RUNTIME_VARIANT: 'devtool' },
-  });
-  assert.equal(result.config.electronDownload.customFilename, 'lynxtron-v1.2.3-darwin-mas-arm64-devtool.zip');
+test('MAS requires an explicit runtime source', () => {
+  assert.throws(() => prepare({ args: ['--mas'] }), /MAS npm runtimes are not published/);
+  assert.doesNotThrow(() => prepare({ args: ['--mas'], config: { electronDist: '/custom/runtime' } }));
 });
 
 test('explicit electronDownload remains authoritative while custom yml is stripped', () => {
   const electronDownload = { mirror: 'https://mirror.example.test/' };
   const result = prepare({ config: { lynxtron: { runtimeVariant: 'devtool' }, electronDownload } });
   assert.equal(result.config.electronDownload, electronDownload);
+  assert.equal(result.useNpmRuntime, false);
   assert.equal(result.config.lynxtron, undefined);
 });
 
 test('cross-platform targets select artifacts for the requested platform', () => {
   assert.equal(
-    prepare({ args: ['--win', '--x64'] }).config.electronDownload.customFilename,
+    filename(prepare({ args: ['--win', '--x64'] })),
     'lynxtron-v1.2.3-win32-x64.zip'
   );
   assert.equal(
-    prepare({ args: ['--linux', '--x64'] }).config.electronDownload.customFilename,
+    filename(prepare({ args: ['--linux', '--x64'] })),
     'lynxtron-v1.2.3-linux-x64.zip'
   );
   assert.equal(
-    prepare({ args: ['--mac', '--arm64'] }).config.electronDownload.customFilename,
+    filename(prepare({ args: ['--mac', '--arm64'] })),
     'lynxtron-v1.2.3-darwin-arm64.zip'
   );
 });
@@ -88,7 +91,7 @@ test('macOS yml architecture selects the matching runtime artifact', () => {
   ]) {
     const result = prepare({ config: { mac } });
     assert.equal(
-      result.config.electronDownload.customFilename,
+      filename(result),
       `lynxtron-v1.2.3-darwin-${expectedArch}.zip`
     );
   }
@@ -100,7 +103,7 @@ test('CLI architecture overrides yml architecture', () => {
   };
   const result = prepare({ config, args: ['--mac', '--arm64'] });
   assert.equal(
-    result.config.electronDownload.customFilename,
+    filename(result),
     'lynxtron-v1.2.3-darwin-arm64.zip'
   );
   applyArchitectureToConfig(result.config, result.platform, result.arch);
@@ -173,11 +176,11 @@ test('universal slices select published macOS assets for both runtime variants',
     const config = { lynxtron: { runtimeVariant: variant } };
     const suffix = variant === 'devtool' ? '-devtool' : '';
     assert.equal(
-      prepare({ config: structuredClone(config), arch: '--x64' }).config.electronDownload.customFilename,
+      filename(prepare({config: structuredClone(config), arch: '--x64'})),
       `lynxtron-v1.2.3-darwin-x64${suffix}.zip`
     );
     assert.equal(
-      prepare({ config: structuredClone(config), arch: '--arm64' }).config.electronDownload.customFilename,
+      filename(prepare({config: structuredClone(config), arch: '--arm64'})),
       `lynxtron-v1.2.3-darwin-arm64${suffix}.zip`
     );
   }
@@ -211,4 +214,32 @@ test('universal packaging uses a sanitized config file', async () => {
     '/project/dist/mac-universal/Example.app',
     '--universal',
   ]);
+});
+
+test('packages without the OSS npm opt-in retain archive downloads and MAS filenames', () => {
+  const result = prepare({runtimeDistribution: 'archive'});
+  assert.equal(result.useNpmRuntime, false);
+  assert.deepEqual(result.config.electronDownload, {
+    version: '1.2.3', mirror: '', customDir: 'v1.2.3',
+    customFilename: 'lynxtron-v1.2.3-darwin-arm64.zip',
+  });
+  const mas = prepare({runtimeDistribution:'archive', args:['--mas']});
+  assert.equal(mas.config.electronDownload.customFilename, 'lynxtron-v1.2.3-darwin-mas-arm64.zip');
+});
+
+test('downstream mirror rewriting remains effective without the OSS npm marker', () => {
+  const fs = require('node:fs');
+  const vm = require('node:vm');
+  const source = fs.readFileSync(require.resolve('../runtime-config.js'), 'utf8');
+  const transformed = source.replace(/^(\s*)mirror:\s*['"].*?['"],?/gm,
+    "$1mirror: 'https://downloads.example.test/runtime/',");
+  const context = {module:{exports:{}}};
+  vm.runInNewContext(transformed, context);
+  const result = context.module.exports.prepareRuntimeConfig({
+    config:{}, args:[], env:{}, platform:'darwin', defaultArch:'arm64',
+    lynxtronVersion:'2.3.4', runtimeArtifacts,
+  });
+  assert.equal(result.useNpmRuntime, false);
+  assert.equal(result.config.electronDownload.mirror, 'https://downloads.example.test/runtime/');
+  assert.equal(result.config.electronDownload.customFilename, 'lynxtron-v2.3.4-darwin-arm64.zip');
 });

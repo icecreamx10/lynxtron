@@ -215,3 +215,37 @@ test('runtime archives cannot overwrite files through an escaping symlink', asyn
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test('archive distributions retain configured ZIP URLs and never query npm', async () => {
+  const packageRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'lynxtron-archive-mode-'));
+  const urls = [];
+  try {
+    await ensureRuntime({
+      variant: 'devtool', version: '2.3.4', platform: 'linux', arch: 'x64',
+      baseUrl: 'https://downloads.example.test/runtime/',
+      packageRoot, executableRelativePath: 'lynxtron',
+      packageArchive: async () => { throw new Error('Archive mode must not use npm'); },
+      download: async (url, target) => { urls.push(url); await fs.writeFile(target, 'archive'); },
+      extract: async (_source, {dir}) => { await fs.writeFile(path.join(dir,'lynxtron'),'binary'); },
+    });
+    assert.deepEqual(urls, ['https://downloads.example.test/runtime/v2.3.4/lynxtron-v2.3.4-linux-x64-devtool.zip']);
+  } finally { await fs.rm(packageRoot, {recursive:true, force:true}); }
+});
+
+for (const customUrl of [undefined, 'https://custom.example.test/runtime.zip']) {
+  test(`configured archive URL overrides npm mode (${customUrl ? 'custom URL first' : 'base URL first'})`, async () => {
+    const packageRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'lynxtron-url-priority-'));
+    const urls = [];
+    try {
+      await ensureRuntime({
+        variant:'devtool', distribution:'npm', version:'2.3.4', platform:'linux', arch:'x64',
+        baseUrl:'https://downloads.example.test/runtime/', customUrl,
+        packageRoot, executableRelativePath:'lynxtron',
+        packageArchive:async () => {throw new Error('Configured archive URLs must take precedence over npm');},
+        download:async (url, target) => {urls.push(url); await fs.writeFile(target,'archive');},
+        extract:async (_source,{dir}) => {await fs.writeFile(path.join(dir,'lynxtron'),'binary');},
+      });
+      assert.deepEqual(urls,[customUrl || 'https://downloads.example.test/runtime/v2.3.4/lynxtron-v2.3.4-linux-x64-devtool.zip']);
+    } finally {await fs.rm(packageRoot,{recursive:true,force:true});}
+  });
+}

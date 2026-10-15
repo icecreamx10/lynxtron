@@ -3,6 +3,14 @@ name: publish
 on:
   workflow_call:
     inputs:
+      artifacts_run_id:
+        description: 'Reuse runtime artifacts from an earlier publish run; skip native builds and release creation'
+        required: false
+        type: string
+      npm_tag:
+        description: 'Optional npm dist-tag override for prerelease validation'
+        required: false
+        type: string
       prefer_discrete_gpu:
         description: 'Prefer high-performance Windows graphics instead of system selection'
         required: false
@@ -18,6 +26,14 @@ on:
         type: string
   workflow_dispatch:
     inputs:
+      artifacts_run_id:
+        description: 'Reuse runtime artifacts from an earlier publish run; skip native builds and release creation'
+        required: false
+        type: string
+      npm_tag:
+        description: 'Optional npm dist-tag override for alpha validation (e.g. runtime-test)'
+        required: false
+        type: string
       prefer_discrete_gpu:
         description: 'Prefer high-performance Windows graphics instead of system selection'
         required: false
@@ -101,6 +117,7 @@ jobs:
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
   build-macos:
+    if: ${{ !inputs.artifacts_run_id }}
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-darwin-15.6.1-medium
@@ -183,6 +200,7 @@ jobs:
           path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-node-headers.zip
 
   build-linux:
+    if: ${{ !inputs.artifacts_run_id }}
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-ubuntu-22.04-medium
@@ -262,6 +280,7 @@ jobs:
           path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-linux-${{ matrix.arch }}-symbols.zip
 
   build-windows:
+    if: ${{ !inputs.artifacts_run_id }}
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-windows-2022-large
@@ -381,6 +400,7 @@ jobs:
           path: lynxtron/publish/cef_webview-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}.zip
 
   build-macos-devtool:
+    if: ${{ !inputs.artifacts_run_id }}
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-darwin-15.6.1-medium
@@ -442,6 +462,7 @@ jobs:
           path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}-devtool-symbols.zip
 
   build-linux-devtool:
+    if: ${{ !inputs.artifacts_run_id }}
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-ubuntu-22.04-medium
@@ -522,6 +543,7 @@ jobs:
           path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-linux-${{ matrix.arch }}-devtool-symbols.zip
 
   build-windows-devtool:
+    if: ${{ !inputs.artifacts_run_id }}
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-windows-2022-large
@@ -608,6 +630,7 @@ jobs:
           path: lynxtron/publish/lynxtron-v${{ needs.get-version.outputs.version }}-win32-${{ matrix.arch }}-devtool-symbols.zip
 
   build-cef-webview-macos:
+    if: ${{ !inputs.artifacts_run_id }}
     needs: get-version
     timeout-minutes: 120
     runs-on: lynx-darwin-15.6.1-medium
@@ -635,6 +658,7 @@ jobs:
           path: lynxtron/publish/cef_webview-v${{ needs.get-version.outputs.version }}-darwin-${{ matrix.arch }}.zip
 
   create-release:
+    if: ${{ !inputs.artifacts_run_id }}
     needs:
       [
         get-version,
@@ -673,10 +697,12 @@ jobs:
           artifacts: 'artifacts/**/*.zip'
 
   publish-npm:
+    if: ${{ always() && needs.get-version.result == 'success' && (needs.create-release.result == 'success' || inputs.artifacts_run_id != '') }}
     needs: [get-version, create-release]
     runs-on: macos-latest
     permissions:
       contents: read
+      actions: read
       id-token: write
     defaults:
       run:
@@ -698,6 +724,8 @@ jobs:
           provenance: false
       - name: Sync version from tag
         id: prepare
+        env:
+          REQUESTED_NPM_TAG: ${{ inputs.npm_tag }}
         run: |
           VERSION=${{ needs.get-version.outputs.version }}
           cd ${{ github.workspace }}/lynxtron
@@ -718,11 +746,46 @@ jobs:
           else
             NPM_TAG="latest"
           fi
+          if [ -n "$REQUESTED_NPM_TAG" ]; then
+            if ! printf '%s' "$REQUESTED_NPM_TAG" | grep -Eq '^[a-z][a-z0-9-]*$' || [ "$REQUESTED_NPM_TAG" = latest ] || [ -z "$PRERELEASE" ]; then
+              echo "Custom npm tag must be a non-latest tag for a prerelease version"
+              exit 1
+            fi
+            NPM_TAG="$REQUESTED_NPM_TAG"
+          fi
           echo "npm_tag=$NPM_TAG" >> "$GITHUB_OUTPUT"
           echo "Using npm dist-tag: $NPM_TAG"
           # Update package.json version field
           cd ${{ github.workspace }}/lynxtron/src/packages
           python3 publish_prepare.py --version "$VERSION"
+      - name: Validate reused artifact source
+        if: inputs.artifacts_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACTS_RUN_ID: ${{ inputs.artifacts_run_id }}
+        run: |
+          case "$ARTIFACTS_RUN_ID" in *[!0-9]*|'') echo 'Invalid artifact run ID'; exit 1;; esac
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACTS_RUN_ID" > "$RUNNER_TEMP/artifact-source.json"
+          python3 - "$RUNNER_TEMP/artifact-source.json" "$GITHUB_REPOSITORY" <<'PYVALIDATE'
+          import json, sys
+          run = json.load(open(sys.argv[1]))
+          assert run['path'] == '.github/workflows/publish.yml', 'Artifacts must originate from the publish workflow'
+          assert run['head_repository']['full_name'] == sys.argv[2], 'Fork artifact sources are not supported'
+          assert run['status'] == 'completed', 'Source run must be complete'
+          PYVALIDATE
+      - name: Download runtime archives
+        uses: actions/download-artifact@v4
+        with:
+          path: runtime-artifacts
+          run-id: ${{ inputs.artifacts_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+          pattern: '{lynxtron-*,devtool-lynxtron-*}'
+      - name: Prepare platform npm packages
+        run: |
+          node ../runtime-npm/prepare.cjs '${{ needs.get-version.outputs.version }}' "$GITHUB_WORKSPACE/runtime-artifacts" "$RUNNER_TEMP/lynxtron-runtime-npm"
+      - name: Publish and verify platform npm packages
+        run: |
+          node ../runtime-npm/publish.cjs "$RUNNER_TEMP/lynxtron-runtime-npm" '${{ steps.prepare.outputs.npm_tag }}'
       - name: Publish
         run: |-
           NPM_TAG=${{ steps.prepare.outputs.npm_tag }}

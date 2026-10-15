@@ -28,6 +28,9 @@ const pckJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", 'package.j
 
 export const VERSION = pckJson.version;
 
+// Only the OSS publishing preparation opts into npm runtime distribution.
+export const RUNTIME_DISTRIBUTION = pckJson.lynxtronRuntimeDistribution || 'archive';
+
 export const ARCH = process.env.npm_config_arch || process.arch;
 
 export const PLATFORM = process.env.npm_config_platform || os.platform();

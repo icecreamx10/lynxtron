@@ -174,6 +174,7 @@ function prepareRuntimeConfig({
   platform,
   defaultArch,
   lynxtronVersion,
+  runtimeDistribution = 'archive',
   runtimeArtifacts,
 }) {
   const { cliVariant, forwardedArgs } = runtimeArtifacts.parseRuntimeArguments(args);
@@ -198,11 +199,19 @@ function prepareRuntimeConfig({
 
   delete config.lynxtron;
 
-  if (!config.electronDownload) {
-    const effectiveVersion = config.electronVersion || lynxtronVersion;
-    if (!config.electronVersion) {
-      config.electronVersion = effectiveVersion;
+  const effectiveVersion = config.electronVersion || lynxtronVersion;
+  if (!config.electronVersion) config.electronVersion = effectiveVersion;
+  const hasCustomRuntime = Boolean(config.electronDownload || config.electronDist);
+  const useNpmRuntime = runtimeDistribution === 'npm' && !hasCustomRuntime;
+  if (useNpmRuntime) {
+    if (forwardedArgs.includes('--mas')) {
+      throw new Error('MAS npm runtimes are not published. Configure electronDist or electronDownload explicitly.');
     }
+    runtimeArtifacts.getRuntimePackageName({ platform: resolvedPlatform, arch: resolvedArch, variant });
+  }
+
+  if (!useNpmRuntime && !hasCustomRuntime) {
+    // Keep this mirror declaration compatible with downstream archive preparation.
     config.electronDownload = {
       version: effectiveVersion,
       mirror: '',
@@ -219,6 +228,8 @@ function prepareRuntimeConfig({
 
   return {
     config,
+    useNpmRuntime,
+    version: effectiveVersion,
     forwardedArgs,
     variant,
     arch: resolvedArch,
